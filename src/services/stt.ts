@@ -30,8 +30,14 @@ export async function transcribeAudio(
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new SttError("Invalid OpenAI API key. Please check Settings.", 401);
+    }
     if (response.status === 413) {
       throw new SttError("Recording too long. Please try a shorter message.", 413);
+    }
+    if (response.status === 429) {
+      throw new SttError("OpenAI rate limit reached. Please wait a moment.", 429);
     }
     throw new SttError(`Speech recognition failed (${response.status})`, response.status);
   }

@@ -33,7 +33,10 @@ export async function* streamResponse(
       },
       { signal },
     );
-  } catch {
+  } catch (e: unknown) {
+    const status = (e as { status?: number })?.status;
+    if (status === 401) throw new LlmError("Invalid Anthropic API key. Please check Settings.");
+    if (status === 429) throw new LlmError("Anthropic rate limit reached. Please wait a moment.");
     throw new LlmError("Failed to connect to AI. Please try again.");
   }
 
@@ -44,8 +47,11 @@ export async function* streamResponse(
         yield event.delta.text;
       }
     }
-  } catch {
+  } catch (e: unknown) {
     if (signal.aborted) return;
+    const status = (e as { status?: number })?.status;
+    if (status === 401) throw new LlmError("Invalid Anthropic API key. Please check Settings.");
+    if (status === 429) throw new LlmError("Anthropic rate limit reached. Please wait a moment.");
     throw new LlmError("AI response failed. Please try again.");
   }
 }
