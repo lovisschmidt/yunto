@@ -1,21 +1,26 @@
-import { StatusBar } from "expo-status-bar";
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { useEffect } from "react";
+import { Platform } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { AudioModule } from "expo-audio";
+
+import { AppNavigator } from "./src/navigation/AppNavigator.js";
+import { getPermissionsRequested, setPermissionsRequested } from "./src/services/settingsStore.js";
 
 export default function App() {
+  useEffect(() => {
+    async function requestPermissionsOnce() {
+      if (Platform.OS !== "android") return;
+      const already = await getPermissionsRequested();
+      if (already) return;
+      await AudioModule.requestRecordingPermissionsAsync();
+      await setPermissionsRequested();
+    }
+    requestPermissionsOnce();
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <Text>Yunto</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <AppNavigator />
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
