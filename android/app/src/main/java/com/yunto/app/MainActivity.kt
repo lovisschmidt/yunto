@@ -1,4 +1,4 @@
-package com.yuntoscaffold
+package com.yunto.app
 
 import android.os.Build
 import android.os.Bundle
