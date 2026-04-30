@@ -10,15 +10,16 @@ Package manager: **npm**.
 
 ## Commands
 
-> The Expo project has not been scaffolded yet. Commands below reflect the intended setup and will be populated once `npx create-expo-app` is run with the bare template.
-
 ```bash
 # Development
 npm start               # Metro bundler (Expo CLI)
 npm run android         # Build and run on device/emulator
 
 # Quality
-npm run lint            # ESLint
+npm run lint            # oxlint
+npm run lint:fix        # oxlint --fix
+npm run fmt             # oxfmt (format in place)
+npm run fmt:check       # oxfmt --check (CI)
 npm run typecheck       # tsc --noEmit
 npm test                # Jest
 npm test -- --testPathPattern=<file>  # single test file
@@ -69,4 +70,5 @@ Optional alternative to push-to-talk: configurable auto-stop timeout (2–5 seco
 
 - **Commits**: commitlint standard — `type(scope): subject` (lowercase, imperative, no trailing period)
 - **Language**: TypeScript throughout; strict mode
+- **Linting / formatting**: oxlint + oxfmt — no ESLint, no Prettier
 - **Native code**: confined to the headphone button Expo module — everything else is JS/TS. Use Expo Modules API (Kotlin) for any future native additions.

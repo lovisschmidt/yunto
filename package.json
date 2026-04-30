@@ -1,0 +1,30 @@
+{
+  "name": "yunto",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "typecheck": "tsc --noEmit",
+    "test": "jest"
+  },
+  "dependencies": {
+    "expo": "~54.0.33",
+    "expo-status-bar": "~3.0.9",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@types/react": "^19.1.0",
+    "oxfmt": "latest",
+    "oxlint": "latest",
+    "react-native-oxc": "latest",
+    "typescript": "^5.3.0"
+  },
+  "private": true
+}
