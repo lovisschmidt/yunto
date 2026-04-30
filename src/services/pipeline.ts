@@ -24,6 +24,7 @@ export function usePipeline() {
   const [displayStatus, setDisplayStatus] = useState<PipelineStatus>("idle");
   const [session, setSession] = useState<Session | null>(null);
   const [keysPresent, setKeysPresent] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const statusRef = useRef<PipelineStatus>("idle");
@@ -62,7 +63,9 @@ export function usePipeline() {
     }, IDLE_TIMEOUT_MS);
   }, []);
 
-  const speakError = useCallback((message: string) => {
+  const speakError = useCallback((message: string, cause?: unknown) => {
+    console.error("[pipeline]", message, cause ?? "");
+    setErrorMessage(message);
     Speech.speak(message, { language: "en" });
   }, []);
 
@@ -75,12 +78,13 @@ export function usePipeline() {
   }, [recorder]);
 
   const startRecording = useCallback(async () => {
+    setErrorMessage(null);
     try {
       await recorder.prepareToRecordAsync();
       recorder.record();
       updateStatus("recording");
-    } catch {
-      speakError("Microphone access failed. Please try again.");
+    } catch (e) {
+      speakError("Microphone access failed. Please try again.", e);
     }
   }, [recorder, speakError]);
 
@@ -105,7 +109,14 @@ export function usePipeline() {
       const [keys, personaKey] = await Promise.all([getApiKeys(), getPersona()]);
 
       if (!keys.openaiKey || !keys.anthropicKey || !keys.elevenLabsKey) {
-        speakError("Please add your API keys in Settings.");
+        const missing = [
+          !keys.openaiKey && "OpenAI",
+          !keys.anthropicKey && "Anthropic",
+          !keys.elevenLabsKey && "ElevenLabs",
+        ]
+          .filter(Boolean)
+          .join(", ");
+        speakError(`Missing API keys: ${missing}. Please check Settings.`);
         updateStatus("idle");
         return;
       }
@@ -194,13 +205,13 @@ export function usePipeline() {
     } catch (err) {
       if (abort.signal.aborted) return;
       if (err instanceof SttError) {
-        speakError(err.message);
+        speakError(err.message, err);
       } else if (err instanceof LlmError) {
-        speakError(err.message);
+        speakError(err.message, err);
       } else if (err instanceof TtsError) {
-        speakError("Audio generation failed. Please try again.");
+        speakError(err.message, err);
       } else {
-        speakError("Something went wrong. Please try again.");
+        speakError("Something went wrong. Please try again.", err);
       }
     } finally {
       if (!abort.signal.aborted) {
@@ -255,6 +266,7 @@ export function usePipeline() {
     status: displayStatus,
     session,
     keysPresent,
+    errorMessage,
     handleSinglePress,
     handleDoublePress,
     startNewSession,

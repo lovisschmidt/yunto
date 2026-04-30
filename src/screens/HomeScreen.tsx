@@ -25,6 +25,7 @@ export function HomeScreen({ navigation }: Props) {
   const {
     status,
     keysPresent,
+    errorMessage,
     handleSinglePress,
     handleDoublePress,
     startNewSession,
@@ -83,6 +84,7 @@ export function HomeScreen({ navigation }: Props) {
       >
         <WaveformAnimation status={status} />
         <Text style={[styles.statusText, isDark && styles.textDark]}>{statusLabel}</Text>
+        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
       </TouchableOpacity>
 
       <View style={styles.bottomRow}>
@@ -134,5 +136,11 @@ const styles = StyleSheet.create({
     color: "#6366f1",
     paddingVertical: 12,
     paddingHorizontal: 8,
+  },
+  errorText: {
+    fontSize: 13,
+    color: "#e53935",
+    textAlign: "center",
+    paddingHorizontal: 32,
   },
 });
