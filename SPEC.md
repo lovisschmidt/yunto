@@ -635,3 +635,105 @@ App.tsx
 - "Continue in Claude/ChatGPT" clipboard export
 - Context window management / summarization
 - Android Doze / battery optimization guidance
+- Tool use / web search (see below)
+
+---
+
+## v2: Tool Use / Web Search
+
+Claude can call tools during a conversation — the most useful for a voice assistant is web search, letting the user ask things like "what's the weather in Berlin" or "summarise the latest news about X" hands-free.
+
+### Overview
+
+The pipeline gains a new intermediate state: **`tool_call`** (between `thinking` and `speaking`). When Claude returns a `tool_use` content block, the app:
+
+1. Speaks a brief acknowledgement so the user isn't left in silence
+2. Executes the tool (HTTP request to a search API)
+3. Sends the result back to Claude as a `tool_result` message
+4. Resumes streaming the final response → TTS
+
+### New pipeline state
+
+```
+idle → recording → processing → thinking
+  → (tool_call → executing → thinking)*  ← new loop, 0–N times
+  → speaking → idle
+```
+
+UI label for `tool_call` state: `"Searching..."` (same waveform pulse as `thinking`).
+
+### Tool: web search
+
+**Provider:** Brave Search API (`https://api.search.brave.com/res/v1/web/search`)
+
+- BYOK — new `braveSearchKey` field in Settings (optional; tool use only activates when this key is present)
+- Returns top 3 results: title + URL + description snippet
+- Result formatted as plain text and sent back as `tool_result`
+
+**Tool definition sent to Claude:**
+
+```typescript
+const WEB_SEARCH_TOOL: Anthropic.Tool = {
+  name: "web_search",
+  description:
+    "Search the web for current information. Use when the user asks about recent events, weather, prices, or anything that requires up-to-date data.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      query: {
+        type: "string",
+        description: "The search query.",
+      },
+    },
+    required: ["query"],
+  },
+};
+```
+
+Only pass this tool to the API when a Brave Search key is configured.
+
+### Spoken acknowledgement
+
+Before executing the tool call, speak a short phrase via TTS to fill the silence:
+
+| Tool         | Spoken phrase          |
+| ------------ | ---------------------- |
+| `web_search` | "Let me look that up." |
+| (fallback)   | "One moment."          |
+
+Use the same ElevenLabs TTS path as the main response. This phrase plays while the search request is in flight (~500ms–1s).
+
+### Implementation changes
+
+**`src/services/llm.ts`** — update `streamResponse` to:
+
+1. Accept an optional `tools` array
+2. Yield a new event type `{ type: 'tool_call', name: string, input: unknown }` when a `tool_use` block appears
+3. Accept a `tool_results` continuation path: after the tool executes, append `assistant` (tool_use block) + `user` (tool_result block) to messages and restart the stream
+
+**`src/services/tools.ts`** — new file:
+
+```typescript
+export async function executeWebSearch(query: string, braveKey: string): Promise<string>;
+// Returns formatted plain-text snippet of top 3 results
+```
+
+**`src/services/pipeline.ts`** — update `stopRecordingAndProcess` to:
+
+- Pass `tools` to `streamResponse` if Brave key is present
+- Handle `tool_call` yield: speak acknowledgement, call `executeWebSearch`, feed result back
+- Add `tool_call` to `PipelineStatus` union
+
+**`src/screens/HomeScreen.tsx`** — add `'tool_call': 'Searching...'` to `STATUS_LABELS`.
+
+**`src/screens/SettingsScreen.tsx`** — add optional Brave Search API key field (below the three existing keys, labelled "Brave Search API Key (optional — enables web search)").
+
+**`src/services/settingsStore.ts`** — add `braveSearchKey` to `ApiKeys` and `getApiKeys`/`saveApiKeys`.
+
+### Error handling
+
+If the Brave Search request fails (network error, 401, 429): speak `"Search failed, answering from memory."` and send an empty `tool_result` so Claude can still respond without the search data.
+
+### Settings UI note
+
+The Brave Search key field should make the optional nature explicit. If empty, the `web_search` tool is simply not included in the API call — the user gets the same experience as today with no degradation.
