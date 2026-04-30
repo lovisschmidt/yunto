@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+  <application>
+    <service
+      android:name="expo.modules.headphonebutton.HeadphoneButtonService"
+      android:foregroundServiceType="mediaPlayback"
+      android:exported="false" />
+  </application>
+
+</manifest>

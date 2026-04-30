@@ -11,6 +11,7 @@ android/.gradle/
 android/app/build/
 android/build/
 android/local.properties
+modules/headphone-button/android/build/
 
 # Secrets
 *.jks

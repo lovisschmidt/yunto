@@ -73,5 +73,5 @@ Optional alternative to push-to-talk: configurable auto-stop timeout (2–5 seco
 - **Commits**: commitlint standard — `type(scope): subject` (lowercase, imperative, no trailing period)
 - **Language**: TypeScript throughout; strict mode
 - **Linting / formatting**: oxlint + oxfmt — no ESLint, no Prettier
-- **Imports**: use `.js` extensions on relative imports (ESM style). No tsconfig change needed — `expo/tsconfig.base` already sets `moduleResolution: "bundler"` which resolves `.js` to `.ts` files. Do not switch to `node16`/`nodenext` module resolution; it conflicts with Metro.
+- **Imports**: use `.js` extensions on relative imports (ESM style). `expo/tsconfig.base` sets `moduleResolution: "bundler"` which satisfies TypeScript. Metro doesn't natively map `.js` → `.ts` when a custom `resolveRequest` is set, so `metro.config.js` strips the `.js` suffix before passing to oxc-resolver (which then probes `.ts`/`.tsx`). Do not switch to `node16`/`nodenext` module resolution; it conflicts with Metro.
 - **Native code**: confined to the headphone button Expo module — everything else is JS/TS. Use Expo Modules API (Kotlin) for any future native additions.
