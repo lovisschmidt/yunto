@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",
-    "@types/react": "^19.1.0",
+    "@types/react": "~19.1.10",
     "oxfmt": "latest",
     "oxlint": "latest",
     "react-native-oxc": "latest",
