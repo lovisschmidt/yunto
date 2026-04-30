@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { Platform, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { WaveformAnimation } from "../components/WaveformAnimation.js";
@@ -12,7 +13,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
 const STATUS_LABELS: Record<string, string> = {
   idle: "Tap or press headphone button",
-  recording: "Listening...",
+  recording: "Listening... (tap to stop)",
   processing: "Processing...",
   thinking: "Thinking...",
   speaking: "Speaking...",
@@ -21,8 +22,20 @@ const STATUS_LABELS: Record<string, string> = {
 export function HomeScreen({ navigation }: Props) {
   const scheme = useColorScheme();
   const isDark = scheme === "dark";
-  const { status, keysPresent, handleSinglePress, handleDoublePress, startNewSession } =
-    usePipeline();
+  const {
+    status,
+    keysPresent,
+    handleSinglePress,
+    handleDoublePress,
+    startNewSession,
+    refreshApiKeyStatus,
+  } = usePipeline();
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshApiKeyStatus();
+    }, [refreshApiKeyStatus]),
+  );
 
   // Stable refs so the event listener always calls the latest handler
   const singlePressRef = useRef(handleSinglePress);
