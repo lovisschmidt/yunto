@@ -1,6 +1,7 @@
 {
   "name": "yunto",
   "version": "1.0.0",
+  "private": true,
   "main": "index.js",
   "scripts": {
     "start": "expo start --dev-client",
@@ -10,7 +11,8 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "prepare": "husky"
   },
   "dependencies": {
     "expo": "~54.0.33",
@@ -20,11 +22,13 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
     "@types/react": "~19.1.10",
+    "husky": "^9.0.0",
     "oxfmt": "latest",
     "oxlint": "latest",
     "react-native-oxc": "latest",
     "typescript": "^5.3.0"
-  },
-  "private": true
+  }
 }
