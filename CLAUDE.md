@@ -46,6 +46,7 @@ Perceived latency is dominated by STT round-trip + time-to-first-token. TTS play
 ### Headphone button capture
 
 The only part requiring native Android code, implemented as an **Expo Module** (Expo Modules API in Kotlin). Requires:
+
 - A **Foreground Service** running continuously in the background
 - An active **MediaSession** to receive hardware button events
 
@@ -58,6 +59,7 @@ The app supports multiple LLM providers behind a model router. Each provider is 
 ### Data model
 
 Everything is local (JSON). No network calls except to the three external APIs (STT, LLM, TTS). A session holds:
+
 - Conversation history (messages array)
 - Model/provider selection
 - LLM-generated summary, open questions, and action items (generated at session end)
@@ -71,4 +73,5 @@ Optional alternative to push-to-talk: configurable auto-stop timeout (2–5 seco
 - **Commits**: commitlint standard — `type(scope): subject` (lowercase, imperative, no trailing period)
 - **Language**: TypeScript throughout; strict mode
 - **Linting / formatting**: oxlint + oxfmt — no ESLint, no Prettier
+- **Imports**: use `.js` extensions on relative imports (ESM style). No tsconfig change needed — `expo/tsconfig.base` already sets `moduleResolution: "bundler"` which resolves `.js` to `.ts` files. Do not switch to `node16`/`nodenext` module resolution; it conflicts with Metro.
 - **Native code**: confined to the headphone button Expo module — everything else is JS/TS. Use Expo Modules API (Kotlin) for any future native additions.

@@ -56,6 +56,7 @@ At the end of each session, the LLM automatically generates:
 - Action items
 
 **Export options:**
+
 - **"Continue in Claude/ChatGPT"**: Copies a prepared context prompt to clipboard — open the web UI, paste, continue seamlessly
 - **Markdown export**: Save the session as a file
 
@@ -65,18 +66,19 @@ At the end of each session, the LLM automatically generates:
 
 ## Technical Stack
 
-| Component | Decision | Reason |
-|---|---|---|
-| Framework | React Native (TypeScript) | Developer-familiar, cross-platform possible later |
-| STT | Whisper API (OpenAI) | Quality, price ($0.006/min), stable API |
-| TTS | ElevenLabs Flash | ~75ms latency, quality |
-| LLM | Claude / GPT-4 / Gemini (selectable) | BYOK, model-agnostic |
-| Headphone button | Native Module (Android MediaSession) | Only part requiring native Android code |
-| Data persistence | Local (JSON) | No backend required |
+| Component        | Decision                             | Reason                                            |
+| ---------------- | ------------------------------------ | ------------------------------------------------- |
+| Framework        | React Native (TypeScript)            | Developer-familiar, cross-platform possible later |
+| STT              | Whisper API (OpenAI)                 | Quality, price ($0.006/min), stable API           |
+| TTS              | ElevenLabs Flash                     | ~75ms latency, quality                            |
+| LLM              | Claude / GPT-4 / Gemini (selectable) | BYOK, model-agnostic                              |
+| Headphone button | Native Module (Android MediaSession) | Only part requiring native Android code           |
+| Data persistence | Local (JSON)                         | No backend required                               |
 
 **Latency pipeline detail:** STT result arrives → LLM stream starts immediately → first TTS chunks are enqueued before LLM finishes → audio begins playing within ~1–2 seconds of sending. This is the biggest driver of perceived quality.
 
 **Android-specific notes:**
+
 - Foreground Service + active MediaSession required for background button capture
 - Some manufacturers (Samsung, Xiaomi) use aggressive battery optimization — users may need to manually exempt the app
 - Push-to-talk works as long as no other music app holds MediaSession priority
@@ -87,12 +89,12 @@ At the end of each session, the LLM automatically generates:
 
 Based on ~30 minutes of active voice use per day:
 
-| Service | Cost/month |
-|---|---|
-| Whisper STT (OpenAI) | ~$5 |
-| ElevenLabs TTS (Starter plan) | ~$5 |
-| LLM — e.g. Claude Sonnet | ~$3–5 |
-| **Total** | **~$13–15/month** |
+| Service                       | Cost/month        |
+| ----------------------------- | ----------------- |
+| Whisper STT (OpenAI)          | ~$5               |
+| ElevenLabs TTS (Starter plan) | ~$5               |
+| LLM — e.g. Claude Sonnet      | ~$3–5             |
+| **Total**                     | **~$13–15/month** |
 
 All costs are borne by the user via their own API keys. Developer running cost: $0.
 
@@ -103,6 +105,7 @@ All costs are borne by the user via their own API keys. Developer running cost: 
 > Work in progress — instructions will be added as the app is built.
 
 **Prerequisites:**
+
 - Android device (API 26+)
 - API keys: OpenAI (STT), one LLM provider (Anthropic / OpenAI / Google), ElevenLabs (TTS)
 
@@ -121,6 +124,7 @@ All costs are borne by the user via their own API keys. Developer running cost: 
 This project is in early development. The architecture and feature set are defined; implementation has not started yet.
 
 Planned build order:
+
 1. RN project setup, settings screen, LLM text integration
 2. Audio pipeline (STT → LLM streaming → TTS)
 3. Headphone button native module
