@@ -44,7 +44,7 @@ export async function* streamResponse(
         yield event.delta.text;
       }
     }
-  } catch (err) {
+  } catch {
     if (signal.aborted) return;
     throw new LlmError("AI response failed. Please try again.");
   }

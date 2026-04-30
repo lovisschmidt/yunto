@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Platform } from "react-native";
+import { PermissionsAndroid, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AudioModule } from "expo-audio";
 
@@ -13,6 +13,10 @@ export default function App() {
       const already = await getPermissionsRequested();
       if (already) return;
       await AudioModule.requestRecordingPermissionsAsync();
+      // POST_NOTIFICATIONS required for foreground service notification on Android 13+
+      if (Platform.Version >= 33) {
+        await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+      }
       await setPermissionsRequested();
     }
     requestPermissionsOnce();

@@ -1,11 +1,12 @@
-import React, { useCallback } from "react";
-import { StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
+import React, { useCallback, useEffect, useRef } from "react";
+import { Platform, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { WaveformAnimation } from "../components/WaveformAnimation.js";
 import { usePipeline } from "../services/pipeline.js";
 import type { RootStackParamList } from "../navigation/AppNavigator.js";
+import HeadphoneButtonModule from "../../modules/headphone-button/index.js";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
@@ -20,7 +21,35 @@ const STATUS_LABELS: Record<string, string> = {
 export function HomeScreen({ navigation }: Props) {
   const scheme = useColorScheme();
   const isDark = scheme === "dark";
-  const { status, keysPresent, handleSinglePress, startNewSession } = usePipeline();
+  const { status, keysPresent, handleSinglePress, handleDoublePress, startNewSession } =
+    usePipeline();
+
+  // Stable refs so the event listener always calls the latest handler
+  const singlePressRef = useRef(handleSinglePress);
+  const doublePressRef = useRef(handleDoublePress);
+  useEffect(() => {
+    singlePressRef.current = handleSinglePress;
+  }, [handleSinglePress]);
+  useEffect(() => {
+    doublePressRef.current = handleDoublePress;
+  }, [handleDoublePress]);
+
+  // Headphone button wiring (Android only)
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    HeadphoneButtonModule.startListening();
+    const subscription = HeadphoneButtonModule.addListener("onButtonEvent", (event) => {
+      if (event.type === "single") {
+        singlePressRef.current();
+      } else if (event.type === "double") {
+        doublePressRef.current();
+      }
+    });
+    return () => {
+      subscription.remove();
+      HeadphoneButtonModule.stopListening();
+    };
+  }, []);
 
   const onCenterPress = useCallback(() => {
     if (!keysPresent) return;
