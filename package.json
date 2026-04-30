@@ -36,5 +36,8 @@
   },
   "jest": {
     "preset": "jest-expo"
+  },
+  "engines": {
+    "node": "24"
   }
 }
