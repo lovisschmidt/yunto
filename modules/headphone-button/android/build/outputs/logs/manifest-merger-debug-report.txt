@@ -1,0 +1,34 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:1:1-13:12
+INJECTED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:1:1-13:12
+	package
+		INJECTED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:1:11-69
+uses-permission#android.permission.FOREGROUND_SERVICE
+ADDED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:3:3-75
+	android:name
+		ADDED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:3:20-72
+uses-permission#android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK
+ADDED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:4:3-90
+	android:name
+		ADDED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:4:20-87
+application
+ADDED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:6:3-11:17
+service#expo.modules.headphonebutton.HeadphoneButtonService
+ADDED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:7:5-10:34
+	android:exported
+		ADDED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:10:7-31
+	android:foregroundServiceType
+		ADDED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:9:7-52
+	android:name
+		ADDED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:8:7-73
+uses-sdk
+INJECTED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml
+INJECTED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml

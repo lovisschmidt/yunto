@@ -1,0 +1,26 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="expo.modules.headphonebutton" >
+4
+5    <uses-sdk android:minSdkVersion="24" />
+6
+7    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+7-->/Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:3:3-75
+7-->/Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:3:20-72
+8    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+8-->/Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:4:3-90
+8-->/Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:4:20-87
+9
+10    <application>
+10-->/Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:6:3-11:17
+11        <service
+11-->/Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:7:5-10:34
+12            android:name="expo.modules.headphonebutton.HeadphoneButtonService"
+12-->/Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:8:7-73
+13            android:exported="false"
+13-->/Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:10:7-31
+14            android:foregroundServiceType="mediaPlayback" />
+14-->/Users/lovis/dev/freelance/yunto/.claude/worktrees/feature-initial-setup/modules/headphone-button/android/src/main/AndroidManifest.xml:9:7-52
+15    </application>
+16
+17</manifest>

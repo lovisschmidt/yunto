@@ -11,23 +11,23 @@ class HeadphoneButtonModule : Module() {
 
     Events("onButtonEvent")
 
-    Function("startListening") {
-      val module = this@HeadphoneButtonModule
-      HeadphoneButtonService.setModule(module)
-      val ctx = appContext.reactContext ?: return@Function
-      val intent = Intent(ctx, HeadphoneButtonService::class.java)
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        ctx.startForegroundService(intent)
-      } else {
-        ctx.startService(intent)
+    AsyncFunction("startListening") {
+      HeadphoneButtonService.setModule(this@HeadphoneButtonModule)
+      appContext.reactContext?.also { ctx ->
+        val intent = Intent(ctx, HeadphoneButtonService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          ctx.startForegroundService(intent)
+        } else {
+          ctx.startService(intent)
+        }
       }
     }
 
-    Function("stopListening") {
+    AsyncFunction("stopListening") {
       HeadphoneButtonService.clearModule(this@HeadphoneButtonModule)
-      val ctx = appContext.reactContext ?: return@Function
-      val intent = Intent(ctx, HeadphoneButtonService::class.java)
-      ctx.stopService(intent)
+      appContext.reactContext?.also { ctx ->
+        ctx.stopService(Intent(ctx, HeadphoneButtonService::class.java))
+      }
     }
   }
 
