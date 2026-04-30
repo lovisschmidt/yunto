@@ -11,7 +11,7 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "typecheck": "tsc --noEmit",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "prepare": "husky"
   },
   "dependencies": {
@@ -24,11 +24,17 @@
     "@babel/core": "^7.25.0",
     "@commitlint/cli": "^19.0.0",
     "@commitlint/config-conventional": "^19.0.0",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.1.10",
     "husky": "^9.0.0",
+    "jest": "^29.7.0",
+    "jest-expo": "^55.0.16",
     "oxfmt": "latest",
     "oxlint": "latest",
     "react-native-oxc": "latest",
     "typescript": "^5.3.0"
+  },
+  "jest": {
+    "preset": "jest-expo"
   }
 }
