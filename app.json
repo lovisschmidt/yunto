@@ -1,0 +1,8 @@
+{
+  "expo": {
+    "name": "Yunto",
+    "slug": "yunto",
+    "version": "1.0.0",
+    "platforms": ["android"]
+  }
+}

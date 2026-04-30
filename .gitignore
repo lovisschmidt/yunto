@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native build artifacts
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+
+# Secrets
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Misc
+npm-debug.*
+*.orig.*
+.DS_Store
