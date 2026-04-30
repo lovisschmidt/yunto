@@ -1,5 +1,5 @@
-const { getDefaultConfig } = require('expo/metro-config');
-const { createOxcResolver } = require('react-native-oxc');
+const { getDefaultConfig } = require("expo/metro-config");
+const { createOxcResolver } = require("react-native-oxc");
 
 const config = getDefaultConfig(__dirname);
 
