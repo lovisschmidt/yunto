@@ -55,16 +55,37 @@ const beeps: { start: Beep | null; stop: Beep | null; thinking: Beep | null } = 
   thinking: null,
 };
 
+function waitForLoad(player: AudioPlayer): Promise<void> {
+  return new Promise((resolve) => {
+    if (player.isLoaded) {
+      resolve();
+      return;
+    }
+    const sub = player.addListener("playbackStatusUpdate", (status: AudioStatus) => {
+      if (status.isLoaded) {
+        sub.remove();
+        resolve();
+      }
+    });
+  });
+}
+
 // Called from pipeline after setAudioModeAsync so players inherit the correct audio mode.
+// Must be awaited — createAudioPlayer loads asynchronously, and play() silently no-ops
+// until isLoaded is true, causing the first beep to be missed.
 export async function initBeeps(): Promise<void> {
   const [uriStart, uriStop, uriThinking] = await Promise.all([
     writeBeep(880, 80),
     writeBeep(440, 100),
     writeBeep(660, 60),
   ]);
-  beeps.start = { player: createAudioPlayer({ uri: uriStart }) };
-  beeps.stop = { player: createAudioPlayer({ uri: uriStop }) };
-  beeps.thinking = { player: createAudioPlayer({ uri: uriThinking }) };
+  const pStart = createAudioPlayer({ uri: uriStart });
+  const pStop = createAudioPlayer({ uri: uriStop });
+  const pThinking = createAudioPlayer({ uri: uriThinking });
+  await Promise.all([waitForLoad(pStart), waitForLoad(pStop), waitForLoad(pThinking)]);
+  beeps.start = { player: pStart };
+  beeps.stop = { player: pStop };
+  beeps.thinking = { player: pThinking };
 }
 
 function fireBeep(beep: Beep | null): void {

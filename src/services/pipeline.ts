@@ -58,7 +58,7 @@ export function usePipeline() {
         playsInSilentMode: true,
         shouldPlayInBackground: true,
       });
-      initBeeps().catch(() => {});
+      await initBeeps().catch(() => {});
       const active = await getOrCreateActiveSession();
       updateSession(active);
       const keys = await hasApiKeys();
@@ -120,6 +120,9 @@ export function usePipeline() {
       return;
     }
 
+    playThinkingTone();
+    Speech.speak("Thinking", { language: "en" });
+
     const abort = new AbortController();
     abortRef.current = abort;
 
@@ -160,9 +163,7 @@ export function usePipeline() {
       });
       updateSession(currentSession2);
 
-      playThinkingTone();
       updateStatus("thinking");
-      Speech.speak("Thinking", { language: "en" });
       thinkingTimerRef.current = setInterval(() => {
         if (statusRef.current === "thinking") {
           Speech.speak("Still thinking", { language: "en" });
@@ -179,7 +180,6 @@ export function usePipeline() {
       let drainPromise: Promise<void> | null = null;
 
       async function drainQueue() {
-        console.log("[pipeline] drainQueue started");
         clearThinkingTimer();
         Speech.stop();
         updateStatus("speaking");
