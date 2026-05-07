@@ -1,6 +1,6 @@
 import * as FileSystem from "expo-file-system/legacy";
 import { createAudioPlayer } from "expo-audio";
-import type { AudioStatus } from "expo-audio";
+import type { AudioPlayer, AudioStatus } from "expo-audio";
 
 function buildWav(frequency: number, durationMs: number): string {
   const sampleRate = 44100;
@@ -17,18 +17,17 @@ function buildWav(frequency: number, durationMs: number): string {
   v.setUint32(4, 36 + dataLen, true);
   str4(8, "WAVE");
   str4(12, "fmt ");
-  v.setUint32(16, 16, true); // subchunk size
-  v.setUint16(20, 1, true); // PCM
-  v.setUint16(22, 1, true); // mono
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true);
   v.setUint32(24, sampleRate, true);
-  v.setUint32(28, sampleRate * 2, true); // byte rate
-  v.setUint16(32, 2, true); // block align
-  v.setUint16(34, 16, true); // bits per sample
+  v.setUint32(28, sampleRate * 2, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
   str4(36, "data");
   v.setUint32(40, dataLen, true);
 
   for (let i = 0; i < numSamples; i++) {
-    // short attack + release envelope to avoid clicking
     const env = Math.min(i / 80, 1) * Math.min((numSamples - i) / 80, 1);
     const sample = Math.sin((2 * Math.PI * frequency * i) / sampleRate) * env * 0.45 * 32767;
     v.setInt16(44 + i * 2, Math.round(sample), true);
@@ -40,36 +39,48 @@ function buildWav(frequency: number, durationMs: number): string {
   return btoa(bin);
 }
 
-async function playTone(frequency: number, durationMs: number): Promise<void> {
-  const base64 = buildWav(frequency, durationMs);
+async function writeBeep(frequency: number, durationMs: number): Promise<string> {
   const uri = `${FileSystem.cacheDirectory}beep_${frequency}.wav`;
-  await FileSystem.writeAsStringAsync(uri, base64, {
+  await FileSystem.writeAsStringAsync(uri, buildWav(frequency, durationMs), {
     encoding: FileSystem.EncodingType.Base64,
   });
-  return new Promise<void>((resolve) => {
-    const player = createAudioPlayer({ uri });
-    const sub = player.addListener("playbackStatusUpdate", (s: AudioStatus) => {
-      if (s.didJustFinish) {
-        sub.remove();
-        player.remove();
-        resolve();
-      }
-    });
-    player.play();
-  });
+  return uri;
 }
 
-// High short beep — recording started
+type Beep = { player: AudioPlayer };
+
+// Pre-load all three beeps at module init time so the first press has zero I/O.
+const beeps: { start: Beep | null; stop: Beep | null; thinking: Beep | null } = {
+  start: null,
+  stop: null,
+  thinking: null,
+};
+
+(async () => {
+  const [uriStart, uriStop, uriThinking] = await Promise.all([
+    writeBeep(880, 80),
+    writeBeep(440, 100),
+    writeBeep(660, 60),
+  ]);
+  beeps.start = { player: createAudioPlayer({ uri: uriStart }) };
+  beeps.stop = { player: createAudioPlayer({ uri: uriStop }) };
+  beeps.thinking = { player: createAudioPlayer({ uri: uriThinking }) };
+})().catch(() => {});
+
+function fireBeep(beep: Beep | null): void {
+  if (!beep) return;
+  beep.player.seekTo(0);
+  beep.player.play();
+}
+
 export function playStartBeep(): void {
-  playTone(880, 80).catch(() => {});
+  fireBeep(beeps.start);
 }
 
-// Lower short beep — recording stopped
 export function playStopBeep(): void {
-  playTone(440, 100).catch(() => {});
+  fireBeep(beeps.stop);
 }
 
-// Soft mid tone — AI is thinking (fills gap before first TTS chunk)
 export function playThinkingTone(): void {
-  playTone(660, 60).catch(() => {});
+  fireBeep(beeps.thinking);
 }
