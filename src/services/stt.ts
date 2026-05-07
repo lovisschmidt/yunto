@@ -20,6 +20,7 @@ export async function transcribeAudio(
     type: "audio/m4a",
   } as unknown as Blob);
   formData.append("model", "whisper-1");
+  formData.append("response_format", "verbose_json");
 
   const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
@@ -41,7 +42,12 @@ export async function transcribeAudio(
     throw new SttError(`Speech recognition failed (${response.status})`, response.status);
   }
 
-  const data = (await response.json()) as { text: string };
+  const data = (await response.json()) as {
+    text: string;
+    segments?: Array<{ no_speech_prob: number }>;
+  };
   const transcript = data.text.trim();
-  return transcript || null;
+  const noSpeechProb = data.segments?.[0]?.no_speech_prob ?? 0;
+  if (!transcript || noSpeechProb > 0.6) return null;
+  return transcript;
 }
