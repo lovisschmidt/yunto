@@ -13,7 +13,7 @@ import { getPersona as getPersonaContent } from "../constants/personas.js";
 import { transcribeAudio, SttError } from "./stt.js";
 import { streamResponse, LlmError } from "./llm.js";
 import { fetchTtsAudio, playAudioFile, deleteTempFile, TtsError } from "./tts.js";
-import { playStartBeep, playStopBeep, playThinkingTone } from "./sounds.js";
+import { initBeeps, playStartBeep, playStopBeep, playThinkingTone } from "./sounds.js";
 
 export type PipelineStatus = "idle" | "recording" | "processing" | "thinking" | "speaking";
 
@@ -54,6 +54,7 @@ export function usePipeline() {
   useEffect(() => {
     async function init() {
       await setAudioModeAsync({ interruptionMode: "doNotMix", playsInSilentMode: true });
+      initBeeps().catch(() => {});
       const active = await getOrCreateActiveSession();
       updateSession(active);
       const keys = await hasApiKeys();

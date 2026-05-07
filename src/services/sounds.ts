@@ -49,14 +49,14 @@ async function writeBeep(frequency: number, durationMs: number): Promise<string>
 
 type Beep = { player: AudioPlayer };
 
-// Pre-load all three beeps at module init time so the first press has zero I/O.
 const beeps: { start: Beep | null; stop: Beep | null; thinking: Beep | null } = {
   start: null,
   stop: null,
   thinking: null,
 };
 
-(async () => {
+// Called from pipeline after setAudioModeAsync so players inherit the correct audio mode.
+export async function initBeeps(): Promise<void> {
   const [uriStart, uriStop, uriThinking] = await Promise.all([
     writeBeep(880, 80),
     writeBeep(440, 100),
@@ -65,7 +65,7 @@ const beeps: { start: Beep | null; stop: Beep | null; thinking: Beep | null } = 
   beeps.start = { player: createAudioPlayer({ uri: uriStart }) };
   beeps.stop = { player: createAudioPlayer({ uri: uriStop }) };
   beeps.thinking = { player: createAudioPlayer({ uri: uriThinking }) };
-})().catch(() => {});
+}
 
 function fireBeep(beep: Beep | null): void {
   if (!beep) return;
