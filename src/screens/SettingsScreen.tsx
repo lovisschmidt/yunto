@@ -66,7 +66,7 @@ export function SettingsScreen() {
     ]);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-  }, [openaiKey, anthropicKey, elevenLabsKey, selectedPersona]);
+  }, [openaiKey, anthropicKey, elevenLabsKey, selectedPersona, playbackSpeed]);
 
   const bg = isDark ? "#0a0a0a" : "#ffffff";
   const cardBg = isDark ? "#1a1a1a" : "#f5f5f5";
