@@ -15,7 +15,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.util.Log
 import android.view.KeyEvent
 
 class HeadphoneButtonService : Service() {
@@ -34,7 +33,6 @@ class HeadphoneButtonService : Service() {
   override fun onCreate() {
     super.onCreate()
     instance = this
-    Log.d(TAG, "onCreate — service starting")
     createNotificationChannel()
     startForeground(NOTIFICATION_ID, buildNotification())
     setupMediaSession()
@@ -61,14 +59,12 @@ class HeadphoneButtonService : Service() {
   // Called when JS startListening() fires. Sets STATE_PLAYING and requests audio
   // focus so Android routes the button here instead of resuming a paused Spotify.
   fun claim() {
-    Log.d(TAG, "claim() — mediaSession=${mediaSession?.sessionToken}")
     Handler(Looper.getMainLooper()).post {
       requestAudioFocus()
       mediaSession?.let { session ->
         session.setPlaybackState(buildState(PlaybackState.STATE_PLAYING))
         session.isActive = false
         session.isActive = true
-        Log.d(TAG, "claim() — session reactivated, state=PLAYING")
       }
     }
   }
@@ -135,7 +131,6 @@ class HeadphoneButtonService : Service() {
               @Suppress("DEPRECATION")
               mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
             }
-          Log.d(TAG, "onMediaButtonEvent keyCode=${keyEvent?.keyCode} action=${keyEvent?.action}")
           if (keyEvent != null &&
             (keyEvent.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE ||
               keyEvent.keyCode == KeyEvent.KEYCODE_HEADSETHOOK ||
@@ -204,7 +199,6 @@ class HeadphoneButtonService : Service() {
   }
 
   companion object {
-    private const val TAG = "YuntoHeadphone"
     private const val CHANNEL_ID = "yunto_headphone_button"
     private const val NOTIFICATION_ID = 1001
     private const val DEBOUNCE_MS = 300L
