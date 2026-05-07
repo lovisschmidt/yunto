@@ -53,7 +53,11 @@ export function usePipeline() {
 
   useEffect(() => {
     async function init() {
-      await setAudioModeAsync({ interruptionMode: "doNotMix", playsInSilentMode: true });
+      await setAudioModeAsync({
+        interruptionMode: "doNotMix",
+        playsInSilentMode: true,
+        shouldPlayInBackground: true,
+      });
       initBeeps().catch(() => {});
       const active = await getOrCreateActiveSession();
       updateSession(active);
