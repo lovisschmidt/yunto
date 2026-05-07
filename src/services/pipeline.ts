@@ -142,6 +142,11 @@ export function usePipeline() {
 
       const transcript = await transcribeAudio(audioUri, keys.openaiKey, abort.signal);
       if (abort.signal.aborted) return;
+      if (!transcript) {
+        playStopBeep();
+        updateStatus("idle");
+        return;
+      }
 
       let currentSession2 = await appendMessage(currentSession, {
         role: "user",

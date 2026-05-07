@@ -12,7 +12,7 @@ export async function transcribeAudio(
   audioUri: string,
   openaiKey: string,
   signal: AbortSignal,
-): Promise<string> {
+): Promise<string | null> {
   const formData = new FormData();
   formData.append("file", {
     uri: audioUri,
@@ -43,8 +43,5 @@ export async function transcribeAudio(
 
   const data = (await response.json()) as { text: string };
   const transcript = data.text.trim();
-  if (!transcript) {
-    throw new SttError("No speech detected. Please try again.");
-  }
-  return transcript;
+  return transcript || null;
 }
