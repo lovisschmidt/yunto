@@ -13,7 +13,7 @@ import { getPersona as getPersonaContent } from "../constants/personas.js";
 import { transcribeAudio, SttError } from "./stt.js";
 import { streamResponse, LlmError } from "./llm.js";
 import { fetchTtsAudio, playAudioFile, deleteTempFile, TtsError } from "./tts.js";
-import { playStartBeep, playStopBeep } from "./sounds.js";
+import { playStartBeep, playStopBeep, playThinkingTone } from "./sounds.js";
 
 export type PipelineStatus = "idle" | "recording" | "processing" | "thinking" | "speaking";
 
@@ -26,6 +26,7 @@ export function usePipeline() {
   const [session, setSession] = useState<Session | null>(null);
   const [keysPresent, setKeysPresent] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [responsePreview, setResponsePreview] = useState<string | null>(null);
 
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const statusRef = useRef<PipelineStatus>("idle");
@@ -36,6 +37,7 @@ export function usePipeline() {
   function updateStatus(s: PipelineStatus) {
     statusRef.current = s;
     setDisplayStatus(s);
+    if (s === "idle") setResponsePreview(null);
   }
 
   function updateSession(s: Session) {
@@ -136,6 +138,8 @@ export function usePipeline() {
       });
       updateSession(currentSession2);
 
+      setResponsePreview(null);
+      playThinkingTone();
       updateStatus("thinking");
       let fullResponse = "";
       let tokenBuffer = "";
@@ -189,6 +193,11 @@ export function usePipeline() {
         fullResponse += token;
         tokenBuffer += token;
         tokenCount++;
+        setResponsePreview((prev) => {
+          if (prev !== null && prev.length >= 80) return prev;
+          const next = (prev ?? "") + token;
+          return next.length > 80 ? next.slice(0, 80) + "…" : next;
+        });
         if (SENTENCE_END.test(tokenBuffer) || tokenCount >= MAX_CHUNK_TOKENS) {
           flushBuffer();
         }
@@ -272,6 +281,7 @@ export function usePipeline() {
     session,
     keysPresent,
     errorMessage,
+    responsePreview,
     handleSinglePress,
     handleDoublePress,
     startNewSession,

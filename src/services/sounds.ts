@@ -68,3 +68,8 @@ export function playStartBeep(): void {
 export function playStopBeep(): void {
   playTone(440, 100).catch(() => {});
 }
+
+// Soft mid tone — AI is thinking (fills gap before first TTS chunk)
+export function playThinkingTone(): void {
+  playTone(660, 60).catch(() => {});
+}
