@@ -8,7 +8,7 @@ import {
   getOrCreateActiveSession,
   createSession,
 } from "./sessionStore.js";
-import { getApiKeys, hasApiKeys, getPersona } from "./settingsStore.js";
+import { getApiKeys, hasApiKeys, getPersona, getPlaybackSpeed } from "./settingsStore.js";
 import { getPersona as getPersonaContent } from "../constants/personas.js";
 import { transcribeAudio, SttError } from "./stt.js";
 import { streamResponse, LlmError } from "./llm.js";
@@ -111,7 +111,11 @@ export function usePipeline() {
     abortRef.current = abort;
 
     try {
-      const [keys, personaKey] = await Promise.all([getApiKeys(), getPersona()]);
+      const [keys, personaKey, playbackSpeed] = await Promise.all([
+        getApiKeys(),
+        getPersona(),
+        getPlaybackSpeed(),
+      ]);
 
       if (!keys.openaiKey || !keys.anthropicKey || !keys.elevenLabsKey) {
         const missing = [
@@ -157,7 +161,7 @@ export function usePipeline() {
             const uri = await ttsQueue[i]!;
             i++;
             if (!abort.signal.aborted) {
-              await playAudioFile(uri, abort.signal);
+              await playAudioFile(uri, abort.signal, playbackSpeed);
             }
             await deleteTempFile(uri);
           } else if (isDone.value) {

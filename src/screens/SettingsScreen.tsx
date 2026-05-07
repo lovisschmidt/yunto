@@ -12,7 +12,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { PERSONAS, type PersonaKey } from "../constants/personas.js";
-import { getApiKeys, getPersona, saveApiKeys, savePersona } from "../services/settingsStore.js";
+import {
+  getApiKeys,
+  getPersona,
+  saveApiKeys,
+  savePersona,
+  getPlaybackSpeed,
+  savePlaybackSpeed,
+  PLAYBACK_SPEEDS,
+  type PlaybackSpeed,
+} from "../services/settingsStore.js";
 
 export function SettingsScreen() {
   const scheme = useColorScheme();
@@ -22,15 +31,21 @@ export function SettingsScreen() {
   const [anthropicKey, setAnthropicKey] = useState("");
   const [elevenLabsKey, setElevenLabsKey] = useState("");
   const [selectedPersona, setSelectedPersona] = useState<PersonaKey>("general");
+  const [playbackSpeed, setPlaybackSpeed] = useState<PlaybackSpeed>(1.0);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     async function load() {
-      const [keys, persona] = await Promise.all([getApiKeys(), getPersona()]);
+      const [keys, persona, speed] = await Promise.all([
+        getApiKeys(),
+        getPersona(),
+        getPlaybackSpeed(),
+      ]);
       setOpenaiKey(keys.openaiKey);
       setAnthropicKey(keys.anthropicKey);
       setElevenLabsKey(keys.elevenLabsKey);
       setSelectedPersona(persona);
+      setPlaybackSpeed(speed);
     }
     load();
   }, []);
@@ -47,6 +62,7 @@ export function SettingsScreen() {
         elevenLabsKey: elevenLabsKey.trim(),
       }),
       savePersona(selectedPersona),
+      savePlaybackSpeed(playbackSpeed),
     ]);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -126,6 +142,32 @@ export function SettingsScreen() {
           );
         })}
 
+        <Text style={[styles.section, { color: subtleText, marginTop: 24 }]}>PLAYBACK SPEED</Text>
+        <View style={styles.speedRow}>
+          {PLAYBACK_SPEEDS.map((s) => (
+            <TouchableOpacity
+              key={s}
+              style={[
+                styles.speedChip,
+                { borderColor },
+                playbackSpeed === s && styles.speedChipActive,
+              ]}
+              onPress={() => setPlaybackSpeed(s)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.speedChipText,
+                  { color: textColor },
+                  playbackSpeed === s && styles.speedChipTextActive,
+                ]}
+              >
+                {s}x
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <TouchableOpacity
           style={[styles.saveButton, saved && styles.saveButtonDone]}
           onPress={handleSave}
@@ -186,4 +228,29 @@ const styles = StyleSheet.create({
   },
   saveButtonDone: { backgroundColor: "#22c55e" },
   saveButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "600" },
+  speedRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 8,
+  },
+  speedChip: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  speedChipActive: {
+    borderColor: "#6366f1",
+    borderWidth: 2,
+    backgroundColor: "#6366f115",
+  },
+  speedChipText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  speedChipTextActive: {
+    color: "#6366f1",
+    fontWeight: "700",
+  },
 });

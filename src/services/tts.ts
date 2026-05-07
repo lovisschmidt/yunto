@@ -59,11 +59,12 @@ export async function fetchTtsAudio(
   return tempUri;
 }
 
-export async function playAudioFile(uri: string, signal: AbortSignal): Promise<void> {
+export async function playAudioFile(uri: string, signal: AbortSignal, speed = 1.0): Promise<void> {
   if (signal.aborted) return;
 
   return new Promise<void>((resolve) => {
     const player = createAudioPlayer({ uri });
+    if (speed !== 1.0) player.setPlaybackRate(speed);
 
     const onAbort = () => {
       subscription.remove();
