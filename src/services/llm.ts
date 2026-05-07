@@ -1,4 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
+import Anthropic, { APIError } from "@anthropic-ai/sdk";
+import { fetch as expoFetch } from "expo/fetch";
 import type { Message } from "./sessionStore.js";
 
 export class LlmError extends Error {
@@ -14,7 +15,10 @@ export async function* streamResponse(
   anthropicKey: string,
   signal: AbortSignal,
 ): AsyncGenerator<string> {
-  const client = new Anthropic({ apiKey: anthropicKey });
+  const client = new Anthropic({
+    apiKey: anthropicKey,
+    fetch: expoFetch as typeof globalThis.fetch,
+  });
 
   const formattedMessages = messages.map((m) => ({
     role: m.role as "user" | "assistant",
@@ -34,9 +38,12 @@ export async function* streamResponse(
       { signal },
     );
   } catch (e: unknown) {
-    const status = (e as { status?: number })?.status;
-    if (status === 401) throw new LlmError("Invalid Anthropic API key. Please check Settings.");
-    if (status === 429) throw new LlmError("Anthropic rate limit reached. Please wait a moment.");
+    if (e instanceof APIError) {
+      if (e.status === 401) throw new LlmError("Invalid Anthropic API key. Please check Settings.");
+      if (e.status === 429)
+        throw new LlmError("Anthropic rate limit reached. Please wait a moment.");
+      throw new LlmError(`Anthropic error ${e.status}: ${e.message}`);
+    }
     throw new LlmError("Failed to connect to AI. Please try again.");
   }
 
@@ -49,9 +56,12 @@ export async function* streamResponse(
     }
   } catch (e: unknown) {
     if (signal.aborted) return;
-    const status = (e as { status?: number })?.status;
-    if (status === 401) throw new LlmError("Invalid Anthropic API key. Please check Settings.");
-    if (status === 429) throw new LlmError("Anthropic rate limit reached. Please wait a moment.");
+    if (e instanceof APIError) {
+      if (e.status === 401) throw new LlmError("Invalid Anthropic API key. Please check Settings.");
+      if (e.status === 429)
+        throw new LlmError("Anthropic rate limit reached. Please wait a moment.");
+      throw new LlmError(`Anthropic error ${e.status}: ${e.message}`);
+    }
     throw new LlmError("AI response failed. Please try again.");
   }
 }

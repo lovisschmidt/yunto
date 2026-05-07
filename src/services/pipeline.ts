@@ -164,7 +164,9 @@ export function usePipeline() {
       function flushBuffer() {
         const text = tokenBuffer.trim();
         if (!text) return;
-        ttsQueue.push(fetchTtsAudio(text, keys.elevenLabsKey, abort.signal));
+        const p = fetchTtsAudio(text, keys.elevenLabsKey, abort.signal);
+        p.catch(() => {}); // drain loop re-catches; this silences the unhandled-rejection warning
+        ttsQueue.push(p);
         if (!drainPromise) {
           drainPromise = drainQueue();
         }

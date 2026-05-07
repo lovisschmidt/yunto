@@ -36,6 +36,9 @@ export async function fetchTtsAudio(
     if (response.status === 401) {
       throw new TtsError("Invalid ElevenLabs API key. Please check Settings.");
     }
+    if (response.status === 402) {
+      throw new TtsError("ElevenLabs quota exceeded. Upgrade your plan or wait for monthly reset.");
+    }
     if (response.status === 429) {
       throw new TtsError("ElevenLabs rate limit reached. Please wait a moment.");
     }
