@@ -13,6 +13,7 @@ import { getPersona as getPersonaContent } from "../constants/personas.js";
 import { transcribeAudio, SttError } from "./stt.js";
 import { streamResponse, LlmError } from "./llm.js";
 import { fetchTtsAudio, playAudioFile, deleteTempFile, TtsError } from "./tts.js";
+import { playStartBeep, playStopBeep } from "./sounds.js";
 
 export type PipelineStatus = "idle" | "recording" | "processing" | "thinking" | "speaking";
 
@@ -82,6 +83,7 @@ export function usePipeline() {
     try {
       await recorder.prepareToRecordAsync();
       recorder.record();
+      playStartBeep();
       updateStatus("recording");
     } catch (e) {
       speakError("Microphone access failed. Please try again.", e);
@@ -92,6 +94,7 @@ export function usePipeline() {
     const currentSession = sessionRef.current;
     if (!currentSession) return;
 
+    playStopBeep();
     updateStatus("processing");
     await recorder.stop();
     const audioUri = recorder.uri;
