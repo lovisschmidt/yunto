@@ -26,7 +26,6 @@ export function HomeScreen({ navigation }: Props) {
     status,
     keysPresent,
     errorMessage,
-    responsePreview,
     handleSinglePress,
     handleDoublePress,
     startNewSession,
@@ -85,11 +84,6 @@ export function HomeScreen({ navigation }: Props) {
       >
         <WaveformAnimation status={status} />
         <Text style={[styles.statusText, isDark && styles.textDark]}>{statusLabel}</Text>
-        {responsePreview ? (
-          <Text style={[styles.previewText, isDark && styles.previewTextDark]}>
-            {responsePreview}
-          </Text>
-        ) : null}
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
       </TouchableOpacity>
 
@@ -142,16 +136,6 @@ const styles = StyleSheet.create({
     color: "#6366f1",
     paddingVertical: 12,
     paddingHorizontal: 8,
-  },
-  previewText: {
-    fontSize: 14,
-    color: "#333333",
-    textAlign: "center",
-    paddingHorizontal: 32,
-    fontStyle: "italic",
-  },
-  previewTextDark: {
-    color: "#cccccc",
   },
   errorText: {
     fontSize: 13,

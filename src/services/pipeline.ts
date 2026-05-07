@@ -26,18 +26,24 @@ export function usePipeline() {
   const [session, setSession] = useState<Session | null>(null);
   const [keysPresent, setKeysPresent] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [responsePreview, setResponsePreview] = useState<string | null>(null);
 
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const statusRef = useRef<PipelineStatus>("idle");
   const sessionRef = useRef<Session | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function updateStatus(s: PipelineStatus) {
     statusRef.current = s;
     setDisplayStatus(s);
-    if (s === "idle") setResponsePreview(null);
+  }
+
+  function clearThinkingTimer() {
+    if (thinkingTimerRef.current) {
+      clearInterval(thinkingTimerRef.current);
+      thinkingTimerRef.current = null;
+    }
   }
 
   function updateSession(s: Session) {
@@ -73,6 +79,8 @@ export function usePipeline() {
   }, []);
 
   const cancelAll = useCallback(() => {
+    clearThinkingTimer();
+    Speech.stop();
     abortRef.current?.abort();
     abortRef.current = null;
     if (statusRef.current === "recording") {
@@ -142,9 +150,17 @@ export function usePipeline() {
       });
       updateSession(currentSession2);
 
-      setResponsePreview(null);
       playThinkingTone();
       updateStatus("thinking");
+      Speech.speak("Thinking", { language: "en" });
+      thinkingTimerRef.current = setInterval(() => {
+        if (statusRef.current === "thinking") {
+          Speech.speak("Still thinking", { language: "en" });
+        } else {
+          clearThinkingTimer();
+        }
+      }, 3000);
+
       let fullResponse = "";
       let tokenBuffer = "";
       let tokenCount = 0;
@@ -153,6 +169,8 @@ export function usePipeline() {
       let drainPromise: Promise<void> | null = null;
 
       async function drainQueue() {
+        clearThinkingTimer();
+        Speech.stop();
         updateStatus("speaking");
         let i = 0;
         while (true) {
@@ -197,11 +215,6 @@ export function usePipeline() {
         fullResponse += token;
         tokenBuffer += token;
         tokenCount++;
-        setResponsePreview((prev) => {
-          if (prev !== null && prev.length >= 80) return prev;
-          const next = (prev ?? "") + token;
-          return next.length > 80 ? next.slice(0, 80) + "…" : next;
-        });
         if (SENTENCE_END.test(tokenBuffer) || tokenCount >= MAX_CHUNK_TOKENS) {
           flushBuffer();
         }
@@ -221,6 +234,8 @@ export function usePipeline() {
       updateSession(currentSession2);
       resetIdleTimer();
     } catch (err) {
+      clearThinkingTimer();
+      Speech.stop();
       if (abort.signal.aborted) return;
       if (err instanceof SttError) {
         speakError(err.message, err);
@@ -285,7 +300,6 @@ export function usePipeline() {
     session,
     keysPresent,
     errorMessage,
-    responsePreview,
     handleSinglePress,
     handleDoublePress,
     startNewSession,
