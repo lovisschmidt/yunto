@@ -9,7 +9,7 @@ class HeadphoneButtonModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("HeadphoneButton")
 
-    Events("onButtonEvent")
+    Events("onButtonEvent", "onPlaybackComplete")
 
     AsyncFunction("startListening") {
       HeadphoneButtonService.setModule(this@HeadphoneButtonModule)
@@ -29,9 +29,21 @@ class HeadphoneButtonModule : Module() {
         ctx.stopService(Intent(ctx, HeadphoneButtonService::class.java))
       }
     }
+
+    Function("playUri") { uri: String, rate: Float ->
+      HeadphoneButtonService.playUri(uri, rate)
+    }
+
+    Function("stopPlayback") {
+      HeadphoneButtonService.stopPlayback()
+    }
   }
 
   fun emitButtonEvent(type: String) {
     sendEvent("onButtonEvent", mapOf("type" to type))
+  }
+
+  fun emitPlaybackComplete() {
+    sendEvent("onPlaybackComplete", emptyMap<String, Any>())
   }
 }

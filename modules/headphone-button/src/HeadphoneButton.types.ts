@@ -6,4 +6,5 @@ export type ButtonEventPayload = {
 
 export type HeadphoneButtonModuleEvents = {
   onButtonEvent: (params: ButtonEventPayload) => void;
+  onPlaybackComplete: (params: Record<string, never>) => void;
 };

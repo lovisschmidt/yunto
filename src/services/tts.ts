@@ -1,6 +1,5 @@
 import * as FileSystem from "expo-file-system/legacy";
-import { createAudioPlayer } from "expo-audio";
-import type { AudioStatus } from "expo-audio";
+import HeadphoneButtonModule from "../../modules/headphone-button/index.js";
 
 const VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // Rachel
 const MODEL_ID = "eleven_flash_v2_5";
@@ -63,27 +62,20 @@ export async function playAudioFile(uri: string, signal: AbortSignal, speed = 1.
   if (signal.aborted) return;
 
   return new Promise<void>((resolve) => {
-    const player = createAudioPlayer({ uri });
-    if (speed !== 1.0) player.setPlaybackRate(speed);
+    const subscription = HeadphoneButtonModule.addListener("onPlaybackComplete", () => {
+      subscription.remove();
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    });
 
     const onAbort = () => {
       subscription.remove();
-      player.pause();
-      player.remove();
+      HeadphoneButtonModule.stopPlayback();
       resolve();
     };
     signal.addEventListener("abort", onAbort);
 
-    const subscription = player.addListener("playbackStatusUpdate", (status: AudioStatus) => {
-      if (status.didJustFinish) {
-        signal.removeEventListener("abort", onAbort);
-        subscription.remove();
-        player.remove();
-        resolve();
-      }
-    });
-
-    player.play();
+    HeadphoneButtonModule.playUri(uri, speed);
   });
 }
 

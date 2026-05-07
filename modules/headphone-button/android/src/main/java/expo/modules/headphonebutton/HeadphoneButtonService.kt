@@ -7,8 +7,11 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.media.MediaPlayer
+import android.media.PlaybackParams
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Build
@@ -23,6 +26,7 @@ class HeadphoneButtonService : Service() {
   private val handler = Handler(Looper.getMainLooper())
   private var pressCount = 0
   private var audioFocusRequest: AudioFocusRequest? = null
+  private var mediaPlayer: MediaPlayer? = null
 
   private val debounceRunnable = Runnable {
     val type = if (pressCount >= 2) "double" else "single"
@@ -45,6 +49,7 @@ class HeadphoneButtonService : Service() {
   override fun onDestroy() {
     instance = null
     handler.removeCallbacks(debounceRunnable)
+    stopPlayback()
     abandonAudioFocus()
     mediaSession?.apply {
       isActive = false
@@ -75,6 +80,57 @@ class HeadphoneButtonService : Service() {
       abandonAudioFocus()
       mediaSession?.setPlaybackState(buildState(PlaybackState.STATE_PAUSED))
     }
+  }
+
+  fun playUri(uri: String, rate: Float) {
+    Handler(Looper.getMainLooper()).post {
+      stopPlayback()
+      // MediaPlayer requires a raw file path; file:// URIs fail silently on some devices.
+      val path = if (uri.startsWith("file://")) {
+        try { java.net.URI.create(uri).path } catch (_: Exception) { uri }
+      } else {
+        uri
+      }
+      val mp = MediaPlayer()
+      mp.setAudioAttributes(
+        AudioAttributes.Builder()
+          .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+          .setUsage(AudioAttributes.USAGE_MEDIA)
+          .build(),
+      )
+      try {
+        mp.setDataSource(path)
+      } catch (_: Exception) {
+        mp.release()
+        currentModule?.emitPlaybackComplete()
+        return@post
+      }
+      mp.setOnPreparedListener { player ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && rate != 1.0f) {
+          try { player.playbackParams = PlaybackParams().setSpeed(rate) } catch (_: Exception) {}
+        }
+        player.start()
+      }
+      mp.setOnCompletionListener {
+        mediaPlayer = null
+        currentModule?.emitPlaybackComplete()
+      }
+      mp.setOnErrorListener { _, _, _ ->
+        mediaPlayer = null
+        currentModule?.emitPlaybackComplete()
+        true
+      }
+      mp.prepareAsync()
+      mediaPlayer = mp
+    }
+  }
+
+  fun stopPlayback() {
+    mediaPlayer?.let {
+      try { it.stop() } catch (_: Exception) {}
+      try { it.release() } catch (_: Exception) {}
+    }
+    mediaPlayer = null
   }
 
   private fun requestAudioFocus() {
@@ -228,6 +284,14 @@ class HeadphoneButtonService : Service() {
         currentModule = null
         instance?.release()
       }
+    }
+
+    fun playUri(uri: String, rate: Float) {
+      instance?.playUri(uri, rate)
+    }
+
+    fun stopPlayback() {
+      instance?.stopPlayback()
     }
   }
 }
