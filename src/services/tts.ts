@@ -68,6 +68,7 @@ export async function playAudioFile(uri: string, signal: AbortSignal, speed = 1.
 
     const onAbort = () => {
       subscription.remove();
+      player.pause();
       player.remove();
       resolve();
     };
