@@ -295,6 +295,11 @@ export function usePipeline() {
     setKeysPresent(keys);
   }, []);
 
+  const cancelPipeline = useCallback(() => {
+    cancelAll();
+    updateStatus("idle");
+  }, [cancelAll]);
+
   return {
     status: displayStatus,
     session,
@@ -302,6 +307,7 @@ export function usePipeline() {
     errorMessage,
     handleSinglePress,
     handleDoublePress,
+    cancelPipeline,
     startNewSession,
     refreshApiKeyStatus,
   };

@@ -131,17 +131,26 @@ class HeadphoneButtonService : Service() {
               @Suppress("DEPRECATION")
               mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
             }
-          if (keyEvent != null &&
-            (keyEvent.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE ||
-              keyEvent.keyCode == KeyEvent.KEYCODE_HEADSETHOOK ||
-              keyEvent.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY ||
-              keyEvent.keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE)
+          if (keyEvent == null) return super.onMediaButtonEvent(mediaButtonIntent)
+
+          if (keyEvent.keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
+            if (keyEvent.action == KeyEvent.ACTION_DOWN) {
+              currentModule?.emitButtonEvent("double")
+            }
+            return true
+          }
+
+          if (keyEvent.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE ||
+            keyEvent.keyCode == KeyEvent.KEYCODE_HEADSETHOOK ||
+            keyEvent.keyCode == KeyEvent.KEYCODE_MEDIA_PLAY ||
+            keyEvent.keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE
           ) {
             if (keyEvent.action == KeyEvent.ACTION_DOWN) {
               onButtonPress()
             }
             return true
           }
+
           return super.onMediaButtonEvent(mediaButtonIntent)
         }
       },
@@ -201,7 +210,7 @@ class HeadphoneButtonService : Service() {
   companion object {
     private const val CHANNEL_ID = "yunto_headphone_button"
     private const val NOTIFICATION_ID = 1001
-    private const val DEBOUNCE_MS = 300L
+    private const val DEBOUNCE_MS = 400L
 
     @Volatile
     private var currentModule: HeadphoneButtonModule? = null

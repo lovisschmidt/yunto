@@ -28,6 +28,7 @@ export function HomeScreen({ navigation }: Props) {
     errorMessage,
     handleSinglePress,
     handleDoublePress,
+    cancelPipeline,
     startNewSession,
     refreshApiKeyStatus,
   } = usePipeline();
@@ -85,6 +86,15 @@ export function HomeScreen({ navigation }: Props) {
         <WaveformAnimation status={status} />
         <Text style={[styles.statusText, isDark && styles.textDark]}>{statusLabel}</Text>
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+        {status !== "idle" ? (
+          <TouchableOpacity
+            onPress={cancelPipeline}
+            activeOpacity={0.7}
+            style={styles.cancelButton}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        ) : null}
       </TouchableOpacity>
 
       <View style={styles.bottomRow}>
@@ -142,5 +152,18 @@ const styles = StyleSheet.create({
     color: "#e53935",
     textAlign: "center",
     paddingHorizontal: 32,
+  },
+  cancelButton: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#e53935",
+  },
+  cancelButtonText: {
+    fontSize: 14,
+    color: "#e53935",
+    fontWeight: "500",
   },
 });
