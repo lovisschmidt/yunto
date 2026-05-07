@@ -11,6 +11,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Picker } from "@react-native-picker/picker";
+
 import { PERSONAS, type PersonaKey } from "../constants/personas.js";
 import {
   getApiKeys,
@@ -143,29 +145,17 @@ export function SettingsScreen() {
         })}
 
         <Text style={[styles.section, { color: subtleText, marginTop: 24 }]}>PLAYBACK SPEED</Text>
-        <View style={styles.speedRow}>
-          {PLAYBACK_SPEEDS.map((s) => (
-            <TouchableOpacity
-              key={s}
-              style={[
-                styles.speedChip,
-                { borderColor },
-                playbackSpeed === s && styles.speedChipActive,
-              ]}
-              onPress={() => setPlaybackSpeed(s)}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.speedChipText,
-                  { color: textColor },
-                  playbackSpeed === s && styles.speedChipTextActive,
-                ]}
-              >
-                {s}x
-              </Text>
-            </TouchableOpacity>
-          ))}
+        <View style={[styles.pickerWrapper, { backgroundColor: cardBg, borderColor }]}>
+          <Picker
+            selectedValue={playbackSpeed}
+            onValueChange={(v) => setPlaybackSpeed(v as PlaybackSpeed)}
+            style={[styles.picker, { color: textColor }]}
+            dropdownIconColor={textColor}
+          >
+            {PLAYBACK_SPEEDS.map((s) => (
+              <Picker.Item key={s} label={`${s}x`} value={s} color={textColor} />
+            ))}
+          </Picker>
         </View>
 
         <TouchableOpacity
@@ -219,6 +209,15 @@ const styles = StyleSheet.create({
   personaLabel: { fontSize: 15, fontWeight: "600" },
   personaDesc: { fontSize: 13, lineHeight: 18 },
   checkmark: { fontSize: 16, color: "#6366f1" },
+  pickerWrapper: {
+    borderWidth: 1,
+    borderRadius: 12,
+    marginBottom: 8,
+    overflow: "hidden",
+  },
+  picker: {
+    width: "100%",
+  },
   saveButton: {
     backgroundColor: "#6366f1",
     borderRadius: 12,
@@ -228,29 +227,4 @@ const styles = StyleSheet.create({
   },
   saveButtonDone: { backgroundColor: "#22c55e" },
   saveButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "600" },
-  speedRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 8,
-  },
-  speedChip: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  speedChipActive: {
-    borderColor: "#6366f1",
-    borderWidth: 2,
-    backgroundColor: "#6366f115",
-  },
-  speedChipText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  speedChipTextActive: {
-    color: "#6366f1",
-    fontWeight: "700",
-  },
 });

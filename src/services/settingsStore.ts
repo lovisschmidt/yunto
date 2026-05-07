@@ -10,7 +10,7 @@ const KEYS = {
   permissionsRequested: "permissions_requested",
 } as const;
 
-export const PLAYBACK_SPEEDS = [0.5, 1.0, 1.5, 2.0] as const;
+export const PLAYBACK_SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0] as const;
 export type PlaybackSpeed = (typeof PLAYBACK_SPEEDS)[number];
 export const DEFAULT_PLAYBACK_SPEED: PlaybackSpeed = 1.0;
 
