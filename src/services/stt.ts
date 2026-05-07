@@ -20,7 +20,6 @@ export async function transcribeAudio(
     type: "audio/m4a",
   } as unknown as Blob);
   formData.append("model", "whisper-1");
-  formData.append("language", "en");
 
   const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
