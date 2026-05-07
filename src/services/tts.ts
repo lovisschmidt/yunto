@@ -1,3 +1,4 @@
+import { fetch } from "expo/fetch";
 import * as FileSystem from "expo-file-system/legacy";
 import HeadphoneButtonModule from "../../modules/headphone-button/index.js";
 

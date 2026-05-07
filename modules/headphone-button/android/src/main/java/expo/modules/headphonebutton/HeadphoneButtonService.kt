@@ -100,7 +100,7 @@ class HeadphoneButtonService : Service() {
       )
       try {
         mp.setDataSource(path)
-      } catch (_: Exception) {
+      } catch (e: Exception) {
         mp.release()
         currentModule?.emitPlaybackComplete()
         return@post

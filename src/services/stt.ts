@@ -1,3 +1,6 @@
+import { fetch } from "expo/fetch";
+import * as FileSystem from "expo-file-system/legacy";
+
 export class SttError extends Error {
   constructor(
     message: string,
@@ -13,19 +16,45 @@ export async function transcribeAudio(
   openaiKey: string,
   signal: AbortSignal,
 ): Promise<string | null> {
-  const formData = new FormData();
-  formData.append("file", {
-    uri: audioUri,
-    name: "audio.m4a",
-    type: "audio/m4a",
-  } as unknown as Blob);
-  formData.append("model", "whisper-1");
-  formData.append("response_format", "verbose_json");
+  const base64 = await FileSystem.readAsStringAsync(audioUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  const binary = atob(base64);
+  const audioBytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) audioBytes[i] = binary.charCodeAt(i)!;
+
+  // expo/fetch uses OkHttp natively and rejects the RN { uri, name, type } FormData shorthand
+  // as well as standard Blob objects. Build the multipart body manually as a Uint8Array instead.
+  const boundary = `----FormBoundary${Math.random().toString(36).slice(2)}`;
+  const enc = new TextEncoder();
+  const parts: Uint8Array[] = [
+    enc.encode(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="audio.m4a"\r\nContent-Type: audio/m4a\r\n\r\n`,
+    ),
+    audioBytes,
+    enc.encode(
+      `\r\n--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nwhisper-1\r\n`,
+    ),
+    enc.encode(
+      `--${boundary}\r\nContent-Disposition: form-data; name="response_format"\r\n\r\nverbose_json\r\n`,
+    ),
+    enc.encode(`--${boundary}--\r\n`),
+  ];
+  const totalLen = parts.reduce((s, p) => s + p.length, 0);
+  const body = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const part of parts) {
+    body.set(part, offset);
+    offset += part.length;
+  }
 
   const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${openaiKey}` },
-    body: formData,
+    headers: {
+      Authorization: `Bearer ${openaiKey}`,
+      "Content-Type": `multipart/form-data; boundary=${boundary}`,
+    },
+    body,
     signal,
   });
 

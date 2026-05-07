@@ -179,6 +179,7 @@ export function usePipeline() {
       let drainPromise: Promise<void> | null = null;
 
       async function drainQueue() {
+        console.log("[pipeline] drainQueue started");
         clearThinkingTimer();
         Speech.stop();
         updateStatus("speaking");
