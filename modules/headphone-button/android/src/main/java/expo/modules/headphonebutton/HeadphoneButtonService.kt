@@ -272,7 +272,7 @@ class HeadphoneButtonService : Service() {
   companion object {
     private const val CHANNEL_ID = "yunto_headphone_button"
     private const val NOTIFICATION_ID = 1001
-    private const val DEBOUNCE_MS = 400L
+    private const val DEBOUNCE_MS = 300L
 
     @Volatile
     private var currentModule: HeadphoneButtonModule? = null
