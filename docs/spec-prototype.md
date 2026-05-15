@@ -639,101 +639,71 @@ App.tsx
 
 ---
 
-## v2: Tool Use / Web Search
+## Tool Use
 
-Claude can call tools during a conversation — the most useful for a voice assistant is web search, letting the user ask things like "what's the weather in Berlin" or "summarise the latest news about X" hands-free.
+Claude can call tools during a conversation, allowing the Agent persona to answer factual questions, perform arithmetic, and report the current time without hallucinating.
 
-### Overview
+### Decisions
 
-The pipeline gains a new intermediate state: **`tool_call`** (between `thinking` and `speaking`). When Claude returns a `tool_use` content block, the app:
-
-1. Speaks a brief acknowledgement so the user isn't left in silence
-2. Executes the tool (HTTP request to a search API)
-3. Sends the result back to Claude as a `tool_result` message
-4. Resumes streaming the final response → TTS
+| Decision | Choice |
+| -------- | ------ |
+| Tools | `search_wikipedia`, `get_datetime`, `calculate` (all free, no extra API keys) |
+| Persona scope | Agent persona only |
+| Spoken hint | `expo-speech` speaks `"Searching"` immediately when any tool is called |
+| Tool result persistence | Not persisted — tool call messages exist only for the duration of the LLM turn |
+| Math parser | `expr-eval` (safe, no `eval()`) |
 
 ### New pipeline state
 
 ```
 idle → recording → processing → thinking
-  → (tool_call → executing → thinking)*  ← new loop, 0–N times
+  → (searching)*   ← 0–N tool call rounds
   → speaking → idle
 ```
 
-UI label for `tool_call` state: `"Searching..."` (same waveform pulse as `thinking`).
+The `searching` state replaces `thinking` during tool execution. Same waveform pulse animation. UI label: `"Searching..."`.
 
-### Tool: web search
+### Tools
 
-**Provider:** Brave Search API (`https://api.search.brave.com/res/v1/web/search`)
+| Tool | Description | Implementation |
+| ---- | ----------- | -------------- |
+| `search_wikipedia` | Factual look-ups: people, places, concepts, history | Wikipedia REST API (free) — search endpoint → summary endpoint, first ~300 chars of extract |
+| `get_datetime` | Current local date and time | `new Date().toLocaleString()` — no network |
+| `calculate` | Math expressions: `+`, `-`, `*`, `/`, `**`, `sqrt`, parentheses | `expr-eval` package |
 
-- BYOK — new `braveSearchKey` field in Settings (optional; tool use only activates when this key is present)
-- Returns top 3 results: title + URL + description snippet
-- Result formatted as plain text and sent back as `tool_result`
-
-**Tool definition sent to Claude:**
-
-```typescript
-const WEB_SEARCH_TOOL: Anthropic.Tool = {
-  name: "web_search",
-  description:
-    "Search the web for current information. Use when the user asks about recent events, weather, prices, or anything that requires up-to-date data.",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      query: {
-        type: "string",
-        description: "The search query.",
-      },
-    },
-    required: ["query"],
-  },
-};
-```
-
-Only pass this tool to the API when a Brave Search key is configured.
+Claude is instructed to prefer answering directly and only call tools when the question requires specific facts or arithmetic.
 
 ### Spoken acknowledgement
 
-Before executing the tool call, speak a short phrase via TTS to fill the silence:
+When a tool call is detected, `expo-speech` immediately speaks `"Searching"` before the tool request is in flight. This fills the silence and makes the behaviour transparent to the user.
 
-| Tool         | Spoken phrase          |
-| ------------ | ---------------------- |
-| `web_search` | "Let me look that up." |
-| (fallback)   | "One moment."          |
+### Multi-turn loop
 
-Use the same ElevenLabs TTS path as the main response. This phrase plays while the search request is in flight (~500ms–1s).
+The LLM service handles tool call rounds internally. The pipeline consumer (`streamWithTools` async generator) behaves identically to `streamResponse` from the caller's perspective — it yields text tokens. Tool call messages (the `tool_use` assistant block and `tool_result` user block) are only kept in an in-flight local array and are never written to the session store.
 
-### Implementation changes
+### Implementation files
 
-**`src/services/llm.ts`** — update `streamResponse` to:
+| File | Change |
+| ---- | ------ |
+| `src/services/tools.ts` | New — tool definitions (`TOOL_DEFINITIONS`) and `executeTool(name, input, signal)` dispatch |
+| `src/services/llm.ts` | Add `streamWithTools()` alongside unchanged `streamResponse()` |
+| `src/services/pipeline.ts` | Use `streamWithTools` when Agent persona active; add `"searching"` to `PipelineStatus` |
+| `src/constants/personas.ts` | Update Agent system prompt to mention available tools |
+| `src/screens/HomeScreen.tsx` | Add `"searching": "Searching..."` to status label map |
 
-1. Accept an optional `tools` array
-2. Yield a new event type `{ type: 'tool_call', name: string, input: unknown }` when a `tool_use` block appears
-3. Accept a `tool_results` continuation path: after the tool executes, append `assistant` (tool_use block) + `user` (tool_result block) to messages and restart the stream
+### Agent system prompt
 
-**`src/services/tools.ts`** — new file:
-
-```typescript
-export async function executeWebSearch(query: string, braveKey: string): Promise<string>;
-// Returns formatted plain-text snippet of top 3 results
 ```
-
-**`src/services/pipeline.ts`** — update `stopRecordingAndProcess` to:
-
-- Pass `tools` to `streamResponse` if Brave key is present
-- Handle `tool_call` yield: speak acknowledgement, call `executeWebSearch`, feed result back
-- Add `tool_call` to `PipelineStatus` union
-
-**`src/screens/HomeScreen.tsx`** — add `'tool_call': 'Searching...'` to `STATUS_LABELS`.
-
-**`src/screens/SettingsScreen.tsx`** — add optional Brave Search API key field (below the three existing keys, labelled "Brave Search API Key (optional — enables web search)").
-
-**`src/services/settingsStore.ts`** — add `braveSearchKey` to `ApiKeys` and `getApiKeys`/`saveApiKeys`.
+You are a task-focused assistant with access to tools: Wikipedia search, current date/time, and a calculator. Use tools when a question requires specific facts, current time, or arithmetic. For everything else, answer directly without calling tools. Keep spoken responses short. Never use markdown. Always reply in the same language the user speaks.
+```
 
 ### Error handling
 
-If the Brave Search request fails (network error, 401, 429): speak `"Search failed, answering from memory."` and send an empty `tool_result` so Claude can still respond without the search data.
+If a tool call fails (network error, no result): return an error string as the `tool_result` content. Claude will acknowledge it can't retrieve the information and answer from training data. Same `speakError` path for hard failures.
 
-### Settings UI note
+### Future extensions
 
-The Brave Search key field should make the optional nature explicit. If empty, the `web_search` tool is simply not included in the API call — the user gets the same experience as today with no degradation.
+- Web search via a BYOK search API (e.g. Brave Search) for current events and news
+- More tools: weather, unit conversion, news headlines
+- Tools available for General / Brainstorming personas
+- Locale-aware spoken hint
