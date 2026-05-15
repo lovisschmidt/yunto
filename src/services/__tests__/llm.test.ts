@@ -24,10 +24,7 @@ const mockExecuteTool = executeTool as jest.Mock;
 
 let mockMessagesStream: jest.Mock;
 
-function makeStream(
-  events: object[],
-  finalMessage: { stop_reason: string; content: object[] },
-) {
+function makeStream(events: object[], finalMessage: { stop_reason: string; content: object[] }) {
   return {
     [Symbol.asyncIterator]: async function* () {
       for (const ev of events) yield ev;
@@ -114,9 +111,9 @@ describe("streamResponse", () => {
       },
     });
 
-    await expect(
-      collectTokens(streamResponse([], "system", "key", makeSignal())),
-    ).rejects.toThrow("Invalid Anthropic API key");
+    await expect(collectTokens(streamResponse([], "system", "key", makeSignal()))).rejects.toThrow(
+      "Invalid Anthropic API key",
+    );
   });
 
   it("throws LlmError with rate-limit message on 429", async () => {
@@ -127,9 +124,9 @@ describe("streamResponse", () => {
       },
     });
 
-    await expect(
-      collectTokens(streamResponse([], "system", "key", makeSignal())),
-    ).rejects.toThrow("rate limit");
+    await expect(collectTokens(streamResponse([], "system", "key", makeSignal()))).rejects.toThrow(
+      "rate limit",
+    );
   });
 });
 
@@ -165,9 +162,7 @@ describe("streamWithTools", () => {
       input: { expression: "2 + 2" },
     };
     mockMessagesStream
-      .mockReturnValueOnce(
-        makeStream([], { stop_reason: "tool_use", content: [toolBlock] }),
-      )
+      .mockReturnValueOnce(makeStream([], { stop_reason: "tool_use", content: [toolBlock] }))
       .mockReturnValueOnce(
         makeStream(
           [{ type: "content_block_delta", delta: { type: "text_delta", text: "The answer is 4" } }],
@@ -190,22 +185,29 @@ describe("streamWithTools", () => {
 
   it("passes tool result back to Claude as a tool_result message", async () => {
     mockExecuteTool.mockResolvedValue("42");
-    const toolBlock = { type: "tool_use", id: "tu_456", name: "calculate", input: { expression: "6 * 7" } };
+    const toolBlock = {
+      type: "tool_use",
+      id: "tu_456",
+      name: "calculate",
+      input: { expression: "6 * 7" },
+    };
 
     mockMessagesStream
       .mockReturnValueOnce(makeStream([], { stop_reason: "tool_use", content: [toolBlock] }))
       .mockReturnValueOnce(
-        makeStream(
-          [{ type: "content_block_delta", delta: { type: "text_delta", text: "42" } }],
-          { stop_reason: "end_turn", content: [] },
-        ),
+        makeStream([{ type: "content_block_delta", delta: { type: "text_delta", text: "42" } }], {
+          stop_reason: "end_turn",
+          content: [],
+        }),
       );
 
     await collectTokens(streamWithTools([], "system", "key", makeSignal(), onToolCall));
 
     const secondCallMessages = mockMessagesStream.mock.calls[1][0].messages;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const toolResultMsg = secondCallMessages.find((m: any) => m.role === "user" && Array.isArray(m.content));
+    const toolResultMsg = secondCallMessages.find(
+      (m: any) => m.role === "user" && Array.isArray(m.content),
+    );
     expect(toolResultMsg).toBeDefined();
     expect(toolResultMsg.content[0]).toMatchObject({
       type: "tool_result",
@@ -222,10 +224,10 @@ describe("streamWithTools", () => {
       .mockReturnValueOnce(makeStream([], { stop_reason: "tool_use", content: [block1] }))
       .mockReturnValueOnce(makeStream([], { stop_reason: "tool_use", content: [block2] }))
       .mockReturnValueOnce(
-        makeStream(
-          [{ type: "content_block_delta", delta: { type: "text_delta", text: "done" } }],
-          { stop_reason: "end_turn", content: [] },
-        ),
+        makeStream([{ type: "content_block_delta", delta: { type: "text_delta", text: "done" } }], {
+          stop_reason: "end_turn",
+          content: [],
+        }),
       );
 
     const tokens = await collectTokens(

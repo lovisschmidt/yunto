@@ -15,7 +15,13 @@ import { streamResponse, streamWithTools, LlmError } from "./llm.js";
 import { fetchTtsAudio, playAudioFile, deleteTempFile, TtsError } from "./tts.js";
 import { initBeeps, playStartBeep, playStopBeep, playThinkingTone } from "./sounds.js";
 
-export type PipelineStatus = "idle" | "recording" | "processing" | "thinking" | "searching" | "speaking";
+export type PipelineStatus =
+  | "idle"
+  | "recording"
+  | "processing"
+  | "thinking"
+  | "searching"
+  | "speaking";
 
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 export const SENTENCE_END = /[.?!](\s|$)|\.{3}(\s|$)|\n\n/;
@@ -212,12 +218,7 @@ export function usePipeline() {
                 Speech.speak("Searching", { language: "en" });
               },
             )
-          : streamResponse(
-              session.messages,
-              persona.systemPrompt,
-              keys.anthropicKey,
-              abort.signal,
-            );
+          : streamResponse(session.messages, persona.systemPrompt, keys.anthropicKey, abort.signal);
 
       for await (const token of llmStream) {
         if (abort.signal.aborted) break;
