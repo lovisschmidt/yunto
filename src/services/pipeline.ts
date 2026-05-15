@@ -148,12 +148,12 @@ export function usePipeline() {
         return;
       }
 
-      let currentSession2 = await appendMessage(currentSession, {
+      let session = await appendMessage(currentSession, {
         role: "user",
         content: transcript,
         timestamp: new Date().toISOString(),
       });
-      updateSession(currentSession2);
+      updateSession(session);
 
       updateStatus("thinking");
 
@@ -199,7 +199,7 @@ export function usePipeline() {
       }
 
       const llmStream = streamResponse(
-        currentSession2.messages,
+        session.messages,
         persona.systemPrompt,
         keys.anthropicKey,
         abort.signal,
@@ -221,12 +221,12 @@ export function usePipeline() {
       if (drainPromise) await drainPromise;
       if (abort.signal.aborted) return;
 
-      currentSession2 = await appendMessage(currentSession2, {
+      session = await appendMessage(session, {
         role: "assistant",
         content: fullResponse,
         timestamp: new Date().toISOString(),
       });
-      updateSession(currentSession2);
+      updateSession(session);
       resetIdleTimer();
     } catch (err) {
       Speech.stop();
