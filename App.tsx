@@ -14,7 +14,8 @@ export default function App() {
       if (Platform.OS !== "android") return;
       const already = await getPermissionsRequested();
       if (already) return;
-      await AudioModule.requestRecordingPermissionsAsync();
+      const { granted } = await AudioModule.requestRecordingPermissionsAsync();
+      if (!granted) return;
       // POST_NOTIFICATIONS required for foreground service notification on Android 13+
       if (Platform.Version >= 33) {
         await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
