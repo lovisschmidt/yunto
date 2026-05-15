@@ -1,6 +1,11 @@
 // Mock all native/Expo deps so the module can load in Jest
 jest.mock("expo-audio", () => ({
-  useAudioRecorder: jest.fn(() => ({ prepareToRecordAsync: jest.fn(), record: jest.fn(), stop: jest.fn(), uri: null })),
+  useAudioRecorder: jest.fn(() => ({
+    prepareToRecordAsync: jest.fn(),
+    record: jest.fn(),
+    stop: jest.fn(),
+    uri: null,
+  })),
   RecordingPresets: { HIGH_QUALITY: {} },
   setAudioModeAsync: jest.fn(),
 }));
@@ -87,7 +92,7 @@ describe("TTS chunking simulation", () => {
     }
 
     expect(flushed.length).toBe(1);
-    expect(flushed[0]).toBe(("word ".repeat(MAX_CHUNK_TOKENS)).trim());
+    expect(flushed[0]).toBe("word ".repeat(MAX_CHUNK_TOKENS).trim());
   });
 
   it("flushes early on sentence boundary before reaching MAX_CHUNK_TOKENS", () => {
