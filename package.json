@@ -47,7 +47,10 @@
     "typescript": "^5.3.0"
   },
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "moduleNameMapper": {
+      "^(\\.\\.?/.*)\\.js$": "$1"
+    }
   },
   "engines": {
     "node": "24"

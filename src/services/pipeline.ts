@@ -18,8 +18,8 @@ import { initBeeps, playStartBeep, playStopBeep, playThinkingTone } from "./soun
 export type PipelineStatus = "idle" | "recording" | "processing" | "thinking" | "speaking";
 
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
-const SENTENCE_END = /[.?!](\s|$)|\.{3}(\s|$)|\n\n/;
-const MAX_CHUNK_TOKENS = 40;
+export const SENTENCE_END = /[.?!](\s|$)|\.{3}(\s|$)|\n\n/;
+export const MAX_CHUNK_TOKENS = 40;
 
 export function usePipeline() {
   const [displayStatus, setDisplayStatus] = useState<PipelineStatus>("idle");
