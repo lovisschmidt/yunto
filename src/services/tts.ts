@@ -1,5 +1,7 @@
 import { fetch } from "expo/fetch";
 import * as FileSystem from "expo-file-system/legacy";
+// HeadphoneButtonModule owns the MediaPlayer and audio focus — TTS playback routes through it
+// so the same native service that handles button events also controls audio output.
 import HeadphoneButtonModule from "../../modules/headphone-button/index.js";
 
 const VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // Rachel
