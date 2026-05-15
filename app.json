@@ -3,6 +3,7 @@
     "name": "Yunto",
     "slug": "yunto",
     "version": "1.0.0",
-    "platforms": ["android"]
+    "platforms": ["android"],
+    "plugins": ["expo-audio", "expo-secure-store"]
   }
 }
