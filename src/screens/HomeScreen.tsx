@@ -16,6 +16,7 @@ const STATUS_LABELS: Record<string, string> = {
   recording: "Listening... (tap to stop)",
   processing: "Transcribing...",
   thinking: "Thinking...",
+  searching: "Searching...",
   speaking: "Speaking...",
 };
 

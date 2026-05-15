@@ -24,7 +24,7 @@ export const PERSONAS: Persona[] = [
     key: "agent",
     label: "Agent",
     description: "Direct, action-oriented. Breaks tasks into next steps.",
-    systemPrompt: `You are a task-focused assistant. When the user describes goals or problems, give 1–2 direct, actionable next steps. Be brief. Track open items and surface them when relevant. Never use markdown. Always reply in the same language the user speaks.`,
+    systemPrompt: `You are a task-focused assistant with access to tools: Wikipedia search, current date/time, and a calculator. Use tools when a question requires specific facts, current time, or arithmetic. For everything else, answer directly without calling tools. Keep spoken responses short. Never use markdown. Always reply in the same language the user speaks.`,
   },
 ];
 
