@@ -11,11 +11,11 @@ import {
 import { getApiKeys, hasApiKeys, getPersona, getPlaybackSpeed } from "./settingsStore.js";
 import { getPersona as getPersonaContent } from "../constants/personas.js";
 import { transcribeAudio, SttError } from "./stt.js";
-import { streamResponse, LlmError } from "./llm.js";
+import { streamResponse, streamWithTools, LlmError } from "./llm.js";
 import { fetchTtsAudio, playAudioFile, deleteTempFile, TtsError } from "./tts.js";
 import { initBeeps, playStartBeep, playStopBeep, playThinkingTone } from "./sounds.js";
 
-export type PipelineStatus = "idle" | "recording" | "processing" | "thinking" | "speaking";
+export type PipelineStatus = "idle" | "recording" | "processing" | "thinking" | "searching" | "speaking";
 
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 export const SENTENCE_END = /[.?!](\s|$)|\.{3}(\s|$)|\n\n/;
@@ -198,12 +198,26 @@ export function usePipeline() {
         tokenCount = 0;
       }
 
-      const llmStream = streamResponse(
-        session.messages,
-        persona.systemPrompt,
-        keys.anthropicKey,
-        abort.signal,
-      );
+      const llmStream =
+        personaKey === "agent"
+          ? streamWithTools(
+              session.messages,
+              persona.systemPrompt,
+              keys.anthropicKey,
+              abort.signal,
+              () => {
+                Speech.stop();
+                clearThinkingTimer();
+                updateStatus("searching");
+                Speech.speak("Searching", { language: "en" });
+              },
+            )
+          : streamResponse(
+              session.messages,
+              persona.systemPrompt,
+              keys.anthropicKey,
+              abort.signal,
+            );
 
       for await (const token of llmStream) {
         if (abort.signal.aborted) break;
