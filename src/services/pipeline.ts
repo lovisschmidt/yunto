@@ -32,18 +32,10 @@ export function usePipeline() {
   const sessionRef = useRef<Session | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function updateStatus(s: PipelineStatus) {
     statusRef.current = s;
     setDisplayStatus(s);
-  }
-
-  function clearThinkingTimer() {
-    if (thinkingTimerRef.current) {
-      clearInterval(thinkingTimerRef.current);
-      thinkingTimerRef.current = null;
-    }
   }
 
   function updateSession(s: Session) {
@@ -84,7 +76,6 @@ export function usePipeline() {
   }, []);
 
   const cancelAll = useCallback(() => {
-    clearThinkingTimer();
     Speech.stop();
     abortRef.current?.abort();
     abortRef.current = null;
@@ -151,6 +142,7 @@ export function usePipeline() {
       const transcript = await transcribeAudio(audioUri, keys.openaiKey, abort.signal);
       if (abort.signal.aborted) return;
       if (!transcript) {
+        Speech.stop();
         playStopBeep();
         updateStatus("idle");
         return;
@@ -164,13 +156,6 @@ export function usePipeline() {
       updateSession(currentSession2);
 
       updateStatus("thinking");
-      thinkingTimerRef.current = setInterval(() => {
-        if (statusRef.current === "thinking") {
-          Speech.speak("Still thinking", { language: "en" });
-        } else {
-          clearThinkingTimer();
-        }
-      }, 3000);
 
       let fullResponse = "";
       let tokenBuffer = "";
@@ -180,7 +165,6 @@ export function usePipeline() {
       let drainPromise: Promise<void> | null = null;
 
       async function drainQueue() {
-        clearThinkingTimer();
         Speech.stop();
         updateStatus("speaking");
         let i = 0;
@@ -245,7 +229,6 @@ export function usePipeline() {
       updateSession(currentSession2);
       resetIdleTimer();
     } catch (err) {
-      clearThinkingTimer();
       Speech.stop();
       if (abort.signal.aborted) return;
       if (err instanceof SttError) {
