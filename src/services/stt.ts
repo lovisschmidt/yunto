@@ -25,7 +25,7 @@ export async function transcribeAudio(
 
   // expo/fetch uses OkHttp natively and rejects the RN { uri, name, type } FormData shorthand
   // as well as standard Blob objects. Build the multipart body manually as a Uint8Array instead.
-  const boundary = `----FormBoundary${Math.random().toString(36).slice(2)}`;
+  const boundary = "----FormBoundaryYuntoAudioUpload1a2b3c4d";
   const enc = new TextEncoder();
   const parts: Uint8Array[] = [
     enc.encode(
