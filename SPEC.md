@@ -737,3 +737,82 @@ If the Brave Search request fails (network error, 401, 429): speak `"Search fail
 ### Settings UI note
 
 The Brave Search key field should make the optional nature explicit. If empty, the `web_search` tool is simply not included in the API call — the user gets the same experience as today with no degradation.
+
+---
+
+## Hands-Off Feedback Improvements
+
+Addresses gaps in the headphone-only (screenless) experience. In hands-off use the user has no visual feedback at all — every state change must be audible.
+
+### 1. "New conversation" announcement on session reset
+
+**Current behavior:** Double-pressing from idle (or tapping "New Session") creates a new session silently. The only feedback is the start beep for the new recording.
+
+**New behavior:** Speak `"New conversation"` via `expo-speech` immediately when the new session is created, before the start-recording beep fires.
+
+**Why this matters:** Without a screen, the user has no way to know whether their next message continues the previous context or starts fresh. A brief spoken confirmation closes that gap.
+
+**Scope:** Fire only on explicit new-session actions (double press from idle, "New Session" button). The 10-minute idle timeout remains silent — that reset happens in the background while the user isn't interacting.
+
+**Implementation — `src/services/pipeline.ts`:**
+
+- In `handleDoublePress()`, when state is idle: call `Speech.speak("New conversation")` before `playStartBeep()` / start recording
+- Mirror the same call in whatever handler drives the "New Session" button
+
+---
+
+### 2. Interrupt confirmation beep on barge-in
+
+**Current behavior:** Single-pressing while the AI is speaking (or processing/thinking) cancels output and immediately starts recording — with no audio signal that the interrupt was received.
+
+**New behavior:** Play a short, distinct beep the moment a barge-in is detected, before the start-recording beep. This confirms "yes, you stopped me."
+
+**Beep spec:**
+
+| Property  | Value                 |
+| --------- | --------------------- |
+| Frequency | 523 Hz (C5)           |
+| Duration  | 60 ms                 |
+| Name      | `playInterruptBeep()` |
+
+523 Hz is clearly distinct from the existing three tones (880 Hz start, 440 Hz stop, 660 Hz thinking), and sits in a natural mid-register that reads as "interruption" rather than "start" or "stop."
+
+**Sequence on barge-in:**
+
+```
+user presses button (in speaking/thinking/processing)
+  → playInterruptBeep()        ← new
+  → abort all in-flight work
+  → playStartBeep()
+  → start recording
+```
+
+**Implementation:**
+
+- Add `playInterruptBeep()` to `src/services/sounds.ts` (same procedural WAV approach, 523 Hz, 60 ms)
+- Initialize the player alongside the other three in `initBeeps()`
+- Call it at the top of the barge-in branch in `handleSinglePress()` (pipeline.ts), before aborting
+
+---
+
+### 3. Stop beep on double-press cancel
+
+**Current behavior:** Double-pressing while active (any non-idle state) aborts the pipeline and transitions to idle silently. No audio confirmation.
+
+**New behavior:** Play the existing stop beep (440 Hz) when a double-press cancel fires.
+
+**Why:** The stop beep already signals "action stopped/cancelled" when recording is manually ended. Reusing it here is consistent — it means "I stopped doing the thing." No new asset needed.
+
+**Implementation — `src/services/pipeline.ts`:**
+
+- In `handleDoublePress()`, when state is non-idle: call `playStopBeep()` after aborting all in-flight work
+
+---
+
+### Summary of changes
+
+| #   | Where                      | What changes                                                                              |
+| --- | -------------------------- | ----------------------------------------------------------------------------------------- |
+| 1   | `pipeline.ts`              | Add `Speech.speak("New conversation")` on double-press-from-idle and "New Session" button |
+| 2   | `sounds.ts`, `pipeline.ts` | Add `playInterruptBeep()` (523 Hz, 60 ms); call it on barge-in before start beep          |
+| 3   | `pipeline.ts`              | Call `playStopBeep()` on double-press cancel                                              |
