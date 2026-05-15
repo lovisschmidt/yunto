@@ -53,12 +53,8 @@ describe("generateId", () => {
     expect(ids.size).toBe(20);
   });
 
-  it("contains a timestamp prefix", () => {
-    const before = Date.now();
+  it("is a valid UUID v4", () => {
     const id = generateId();
-    const after = Date.now();
-    const ts = parseInt(id.split("-")[0]!, 10);
-    expect(ts).toBeGreaterThanOrEqual(before);
-    expect(ts).toBeLessThanOrEqual(after);
+    expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   });
 });

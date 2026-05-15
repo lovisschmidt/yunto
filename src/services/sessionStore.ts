@@ -28,7 +28,7 @@ function sessionPath(id: string): string {
 }
 
 export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  return crypto.randomUUID();
 }
 
 export function formatSessionTitle(isoDate: string): string {
@@ -73,17 +73,20 @@ export async function appendMessage(session: Session, message: Message): Promise
 export async function listSessions(): Promise<Session[]> {
   await ensureDir();
   const files = await FileSystem.readDirectoryAsync(SESSIONS_DIR);
-  const sessions: Session[] = [];
-  for (const file of files) {
-    if (!file.endsWith(".json")) continue;
-    try {
-      const content = await FileSystem.readAsStringAsync(`${SESSIONS_DIR}${file}`);
-      sessions.push(JSON.parse(content) as Session);
-    } catch {
-      // skip corrupt files
-    }
-  }
-  return sessions.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+  const jsonFiles = files.filter((f) => f.endsWith(".json"));
+  const results = await Promise.all(
+    jsonFiles.map(async (file) => {
+      try {
+        const content = await FileSystem.readAsStringAsync(`${SESSIONS_DIR}${file}`);
+        return JSON.parse(content) as Session;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return results
+    .filter((s): s is Session => s !== null)
+    .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
 }
 
 export async function loadLatestSession(): Promise<Session | null> {

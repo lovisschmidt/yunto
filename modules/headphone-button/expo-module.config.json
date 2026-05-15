@@ -1,8 +1,5 @@
 {
-  "platforms": ["apple", "android", "web"],
-  "apple": {
-    "modules": ["HeadphoneButtonModule"]
-  },
+  "platforms": ["android"],
   "android": {
     "modules": ["expo.modules.headphonebutton.HeadphoneButtonModule"]
   }

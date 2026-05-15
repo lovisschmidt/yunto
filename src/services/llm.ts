@@ -25,10 +25,8 @@ export async function* streamResponse(
     content: m.content,
   }));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let stream: any;
   try {
-    stream = client.messages.stream(
+    const stream = client.messages.stream(
       {
         model: "claude-sonnet-4-6",
         max_tokens: 1024,
@@ -37,17 +35,6 @@ export async function* streamResponse(
       },
       { signal },
     );
-  } catch (e: unknown) {
-    if (e instanceof APIError) {
-      if (e.status === 401) throw new LlmError("Invalid Anthropic API key. Please check Settings.");
-      if (e.status === 429)
-        throw new LlmError("Anthropic rate limit reached. Please wait a moment.");
-      throw new LlmError(`Anthropic error ${e.status}: ${e.message}`);
-    }
-    throw new LlmError("Failed to connect to AI. Please try again.");
-  }
-
-  try {
     for await (const event of stream) {
       if (signal.aborted) break;
       if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
