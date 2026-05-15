@@ -86,6 +86,15 @@ export async function initBeeps(): Promise<void> {
   beeps.start = { player: pStart };
   beeps.stop = { player: pStop };
   beeps.thinking = { player: pThinking };
+  // ExoPlayer's AudioTrack has a cold-start latency on first use (~80–200ms): audio is rendered
+  // but the hardware output path isn't open yet, so the first beep is silently discarded.
+  // Playing at near-zero (not exactly zero) volume opens the hardware DAC so the first real
+  // beep plays immediately. We let the 80ms tone play to completion — calling pause()+seekTo(0)
+  // after would flush the AudioTrack back to a cold state.
+  pStart.volume = 0.01;
+  pStart.play();
+  await new Promise<void>((r) => setTimeout(r, 200));
+  pStart.volume = 1;
 }
 
 function fireBeep(beep: Beep | null): void {
