@@ -213,7 +213,6 @@ export function usePipeline() {
               abort.signal,
               () => {
                 Speech.stop();
-                clearThinkingTimer();
                 updateStatus("searching");
                 Speech.speak("Searching", { language: "en" });
               },

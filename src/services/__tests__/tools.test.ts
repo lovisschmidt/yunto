@@ -1,9 +1,10 @@
 jest.mock("expo/fetch", () => ({ fetch: jest.fn() }));
 
+import { FetchResponse } from "expo/build/winter/fetch/FetchResponse.js";
 import { fetch as expoFetch } from "expo/fetch";
 import { executeTool, TOOL_DEFINITIONS } from "../tools.js";
 
-const mockFetch = expoFetch as jest.Mock;
+const mockFetch = jest.mocked(expoFetch);
 
 function makeSignal(): AbortSignal {
   return new AbortController().signal;
@@ -14,11 +15,11 @@ function mockWikipedia(searchTitle: string, extract: string) {
     .mockResolvedValueOnce({
       ok: true,
       json: async () => ({ query: { search: [{ title: searchTitle }] } }),
-    })
+    } as any as FetchResponse)
     .mockResolvedValueOnce({
       ok: true,
       json: async () => ({ extract }),
-    });
+    } as any as FetchResponse);
 }
 
 beforeEach(() => {
@@ -61,13 +62,13 @@ describe("executeTool — search_wikipedia", () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ query: { search: [] } }),
-    });
+    } as any as FetchResponse);
     const result = await executeTool("search_wikipedia", { query: "xyzzy" }, makeSignal());
     expect(result).toMatch(/No Wikipedia result found/);
   });
 
   it("returns no-result message when search request fails", async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false });
+    mockFetch.mockResolvedValueOnce({ ok: false } as any as FetchResponse);
     const result = await executeTool("search_wikipedia", { query: "fail" }, makeSignal());
     expect(result).toMatch(/No Wikipedia result found/);
   });
@@ -77,8 +78,8 @@ describe("executeTool — search_wikipedia", () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({ query: { search: [{ title: "Something" }] } }),
-      })
-      .mockResolvedValueOnce({ ok: false });
+      } as any as FetchResponse)
+      .mockResolvedValueOnce({ ok: false } as any as FetchResponse);
     const result = await executeTool("search_wikipedia", { query: "something" }, makeSignal());
     expect(result).toMatch(/No Wikipedia result found/);
   });
