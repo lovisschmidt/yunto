@@ -645,13 +645,13 @@ Claude can call tools during a conversation, allowing the Agent persona to answe
 
 ### Decisions
 
-| Decision | Choice |
-| -------- | ------ |
-| Tools | `search_wikipedia`, `get_datetime`, `calculate` (all free, no extra API keys) |
-| Persona scope | Agent persona only |
-| Spoken hint | `expo-speech` speaks `"Searching"` immediately when any tool is called |
+| Decision                | Choice                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------ |
+| Tools                   | `search_wikipedia`, `get_datetime`, `calculate` (all free, no extra API keys)  |
+| Persona scope           | Agent persona only                                                             |
+| Spoken hint             | `expo-speech` speaks `"Searching"` immediately when any tool is called         |
 | Tool result persistence | Not persisted — tool call messages exist only for the duration of the LLM turn |
-| Math parser | `expr-eval` (safe, no `eval()`) |
+| Math parser             | `expr-eval` (safe, no `eval()`)                                                |
 
 ### New pipeline state
 
@@ -665,11 +665,11 @@ The `searching` state replaces `thinking` during tool execution. Same waveform p
 
 ### Tools
 
-| Tool | Description | Implementation |
-| ---- | ----------- | -------------- |
-| `search_wikipedia` | Factual look-ups: people, places, concepts, history | Wikipedia REST API (free) — search endpoint → summary endpoint, first ~300 chars of extract |
-| `get_datetime` | Current local date and time | `new Date().toLocaleString()` — no network |
-| `calculate` | Math expressions: `+`, `-`, `*`, `/`, `**`, `sqrt`, parentheses | `expr-eval` package |
+| Tool               | Description                                                     | Implementation                                                                              |
+| ------------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `search_wikipedia` | Factual look-ups: people, places, concepts, history             | Wikipedia REST API (free) — search endpoint → summary endpoint, first ~300 chars of extract |
+| `get_datetime`     | Current local date and time                                     | `new Date().toLocaleString()` — no network                                                  |
+| `calculate`        | Math expressions: `+`, `-`, `*`, `/`, `**`, `sqrt`, parentheses | `expr-eval` package                                                                         |
 
 Claude is instructed to prefer answering directly and only call tools when the question requires specific facts or arithmetic.
 
@@ -683,13 +683,13 @@ The LLM service handles tool call rounds internally. The pipeline consumer (`str
 
 ### Implementation files
 
-| File | Change |
-| ---- | ------ |
-| `src/services/tools.ts` | New — tool definitions (`TOOL_DEFINITIONS`) and `executeTool(name, input, signal)` dispatch |
-| `src/services/llm.ts` | Add `streamWithTools()` alongside unchanged `streamResponse()` |
-| `src/services/pipeline.ts` | Use `streamWithTools` when Agent persona active; add `"searching"` to `PipelineStatus` |
-| `src/constants/personas.ts` | Update Agent system prompt to mention available tools |
-| `src/screens/HomeScreen.tsx` | Add `"searching": "Searching..."` to status label map |
+| File                         | Change                                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------------------------- |
+| `src/services/tools.ts`      | New — tool definitions (`TOOL_DEFINITIONS`) and `executeTool(name, input, signal)` dispatch |
+| `src/services/llm.ts`        | Add `streamWithTools()` alongside unchanged `streamResponse()`                              |
+| `src/services/pipeline.ts`   | Use `streamWithTools` when Agent persona active; add `"searching"` to `PipelineStatus`      |
+| `src/constants/personas.ts`  | Update Agent system prompt to mention available tools                                       |
+| `src/screens/HomeScreen.tsx` | Add `"searching": "Searching..."` to status label map                                       |
 
 ### Agent system prompt
 
