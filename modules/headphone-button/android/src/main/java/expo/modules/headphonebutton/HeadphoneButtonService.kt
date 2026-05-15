@@ -64,7 +64,7 @@ class HeadphoneButtonService : Service() {
   // Called when JS startListening() fires. Sets STATE_PLAYING and requests audio
   // focus so Android routes the button here instead of resuming a paused Spotify.
   fun claim() {
-    Handler(Looper.getMainLooper()).post {
+    handler.post {
       requestAudioFocus()
       mediaSession?.let { session ->
         session.setPlaybackState(buildState(PlaybackState.STATE_PLAYING))
@@ -76,7 +76,7 @@ class HeadphoneButtonService : Service() {
 
   // Called when JS stopListening() fires. Reverts to PAUSED and releases focus.
   fun release() {
-    Handler(Looper.getMainLooper()).post {
+    handler.post {
       abandonAudioFocus()
       mediaSession?.setPlaybackState(buildState(PlaybackState.STATE_PAUSED))
     }
