@@ -16,11 +16,11 @@ jest.mock("@anthropic-ai/sdk", () => ({
 }));
 
 import Anthropic from "@anthropic-ai/sdk";
+import { streamResponse, streamWithTools } from "../llm.js";
 import { executeTool } from "../tools.js";
-import { streamResponse, streamWithTools, LlmError } from "../llm.js";
 
-const MockAnthropic = Anthropic as jest.Mock;
-const mockExecuteTool = executeTool as jest.Mock;
+const MockAnthropic = jest.mocked(Anthropic);
+const mockExecuteTool = jest.mocked(executeTool);
 
 let mockMessagesStream: jest.Mock;
 
@@ -47,9 +47,12 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockExecuteTool.mockResolvedValue("tool result");
   mockMessagesStream = jest.fn();
-  MockAnthropic.mockImplementation(() => ({
-    messages: { stream: mockMessagesStream },
-  }));
+  MockAnthropic.mockImplementation(
+    () =>
+      ({
+        messages: { stream: mockMessagesStream },
+      }) as any as Anthropic,
+  );
 });
 
 // ─── streamResponse ───────────────────────────────────────────────────────────
