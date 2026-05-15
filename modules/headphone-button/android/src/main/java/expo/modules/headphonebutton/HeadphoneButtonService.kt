@@ -213,6 +213,12 @@ class HeadphoneButtonService : Service() {
     )
     session.isActive = true
     mediaSession = session
+    // If JS called setModule() before onCreate() completed, instance was null at that point
+    // and claim() was a no-op. Apply the pending claim now that the session is ready.
+    if (claimPending) {
+      claimPending = false
+      claim()
+    }
   }
 
   private fun onButtonPress() {
@@ -274,13 +280,22 @@ class HeadphoneButtonService : Service() {
     @Volatile
     private var instance: HeadphoneButtonService? = null
 
+    @Volatile
+    private var claimPending = false
+
     fun setModule(module: HeadphoneButtonModule) {
       currentModule = module
-      instance?.claim()
+      val inst = instance
+      if (inst != null) {
+        inst.claim()
+      } else {
+        claimPending = true
+      }
     }
 
     fun clearModule(module: HeadphoneButtonModule) {
       if (currentModule === module) {
+        claimPending = false
         currentModule = null
         instance?.release()
       }
