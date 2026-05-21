@@ -14,7 +14,7 @@ publishes it as a GitHub Release. The release job gates on the existing CI check
 | ----------------- | ---------------------------------------- | ------------------------------------------------------------- |
 | Trigger           | Push to `main`                           | Every squash-merged PR produces a release                     |
 | Version bump      | Dev bumps `package.json` in the PR       | Explicit, conventional; nothing auto-commits to main          |
-| versionCode       | `major*10000 + minor*100 + patch`        | Derived from semver; reproducible; no repo writes from CI     |
+| versionCode       | `github.run_number`                      | Always incrementing, stored by GitHub, zero maintenance       |
 | Duplicate version | Skip release silently                    | Tag exists → log + exit 0; merge still lands cleanly          |
 | CI gate           | `needs: check` in same workflow          | Release never ships if lint/type/test fail                    |
 | APK type          | Universal FAT APK                        | One file for all devices                                      |
@@ -22,17 +22,6 @@ publishes it as a GitHub Release. The release job gates on the existing CI check
 | ProGuard/R8       | Disabled                                 | Avoids R8-induced runtime crashes from incomplete rules       |
 | Changelog         | GitHub auto-generated release notes      | Zero config; reads well given commitlint discipline           |
 | Gradle cache      | `~/.gradle/caches` + `~/.gradle/wrapper` | Cuts builds from ~15 min to ~5 min                            |
-
----
-
-## versionCode Derivation
-
-`package.json` version `"1.2.3"` → `versionCode = 1*10000 + 2*100 + 3 = 10203`
-
-Constraints:
-
-- major must stay < 215 (keeps versionCode under Android's 2^31 limit)
-- minor and patch must stay < 100
 
 ---
 
@@ -100,7 +89,7 @@ Key steps:
 5. Restore Gradle cache
 6. `npm ci`
 7. Decode base64 keystore secret to `$RUNNER_TEMP/release.keystore`
-8. `./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a`
+8. `./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a -PversionCode=${{ github.run_number }}`
 9. Rename APK to `yunto-v{version}.apk`
 10. Create GitHub Release (tag + name = `v{version}`, auto-generated notes, APK attached)
 
@@ -112,16 +101,16 @@ Three changes:
 
 ```gradle
 def packageJson = new groovy.json.JsonSlurper().parseText(new File("$projectRoot/package.json").text)
-def semver = packageJson.version.tokenize('.')
-def versionCodeFromSemver = semver[0].toInteger() * 10000 + semver[1].toInteger() * 100 + semver[2].toInteger()
 ```
 
-**2. Use derived version in `defaultConfig`**:
+**2. Use `versionCode` Gradle property (injected by CI) and `versionName` from `package.json`** in `defaultConfig`:
 
 ```gradle
-versionCode versionCodeFromSemver
+versionCode (findProperty('versionCode') ?: 1).toInteger()
 versionName packageJson.version
 ```
+
+CI passes `-PversionCode=${{ github.run_number }}`. Local builds fall back to `1`.
 
 **3. Add release `signingConfig`** (env vars; falls back to debug for local builds):
 
