@@ -84,7 +84,9 @@ jobs:
 
       - name: Decode release keystore
         if: steps.tag_check.outputs.skip == 'false'
-        run: echo "${{ secrets.RELEASE_KEYSTORE }}" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE }}
+        run: echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
 
       - name: Build release APK
         if: steps.tag_check.outputs.skip == 'false'
