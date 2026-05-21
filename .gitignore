@@ -7,7 +7,7 @@ dist/
 web-build/
 
 # Native build artifacts
-android/.gradle/
+.gradle/
 android/app/build/
 android/build/
 android/local.properties
@@ -24,3 +24,6 @@ modules/headphone-button/android/build/
 npm-debug.*
 *.orig.*
 .DS_Store
+
+# worktrees
+worktrees/
