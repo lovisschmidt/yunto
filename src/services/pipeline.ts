@@ -3,7 +3,7 @@ import * as Speech from "expo-speech";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getPersona as getPersonaContent } from "../constants/personas.js";
-import { LlmError, streamResponse, streamWithTools } from "./llm.js";
+import { LlmError, streamWithTools } from "./llm.js";
 import {
   type Session,
   appendMessage,
@@ -204,20 +204,17 @@ export function usePipeline() {
         tokenCount = 0;
       }
 
-      const llmStream =
-        personaKey === "agent"
-          ? streamWithTools(
-              session.messages,
-              persona.systemPrompt,
-              keys.anthropicKey,
-              abort.signal,
-              () => {
-                Speech.stop();
-                updateStatus("searching");
-                Speech.speak("Searching", { language: "en" });
-              },
-            )
-          : streamResponse(session.messages, persona.systemPrompt, keys.anthropicKey, abort.signal);
+      const llmStream = streamWithTools(
+        session.messages,
+        persona.systemPrompt,
+        keys.anthropicKey,
+        abort.signal,
+        () => {
+          Speech.stop();
+          updateStatus("searching");
+          Speech.speak("Searching", { language: "en" });
+        },
+      );
 
       for await (const token of llmStream) {
         if (abort.signal.aborted) break;
