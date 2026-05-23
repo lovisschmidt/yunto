@@ -93,8 +93,8 @@ android {
         applicationId "com.yunto.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode (findProperty('versionCode') ?: 1).toInteger()
-        versionName packageJson.version
+        versionCode = (findProperty('versionCode') ?: 1).toInteger()
+        versionName = packageJson.version
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
