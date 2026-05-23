@@ -27,3 +27,5 @@ npm-debug.*
 
 # worktrees
 worktrees/
+
+*.keystore
