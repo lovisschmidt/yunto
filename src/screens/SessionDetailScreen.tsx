@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
-import Clipboard from "@react-native-clipboard/clipboard";
+import { setStringAsync } from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
@@ -28,12 +28,12 @@ export function SessionDetailScreen({ route, navigation }: Props) {
     load();
   }, [sessionId, navigation]);
 
-  const copyAll = useCallback(() => {
+  const copyAll = useCallback(async () => {
     if (!session) return;
     const text = session.messages
       .map((m) => `${m.role === "user" ? "You" : "AI"}: ${m.content}`)
       .join("\n\n");
-    Clipboard.setString(text);
+    await setStringAsync(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [session]);
