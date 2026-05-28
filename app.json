@@ -2,7 +2,6 @@
   "expo": {
     "name": "Yunto",
     "slug": "yunto",
-    "version": "1.1.0",
     "platforms": ["android"],
     "plugins": [
       "expo-audio",
