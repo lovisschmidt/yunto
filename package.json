@@ -12,7 +12,8 @@
     "fmt:check": "oxfmt --check",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
-    "prepare": "husky"
+    "prepare": "husky",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
@@ -26,6 +27,7 @@
     "expo-file-system": "~19.0.22",
     "expo-secure-store": "~15.0.8",
     "expo-speech": "~14.0.8",
+    "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
     "expr-eval": "^2.0.2",
     "openai": "^6.35.0",

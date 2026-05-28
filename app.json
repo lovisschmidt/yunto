@@ -2,8 +2,30 @@
   "expo": {
     "name": "Yunto",
     "slug": "yunto",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "platforms": ["android"],
-    "plugins": ["expo-audio", "expo-secure-store"]
+    "plugins": [
+      "expo-audio",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#232323",
+          "image": "./assets/images/splash-icon.png",
+          "dark": {
+            "image": "./assets/images/splash-icon.png",
+            "backgroundColor": "#000000"
+          },
+          "imageWidth": 200
+        }
+      ]
+    ],
+    "icon": "./assets/images/app-icon.png",
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/app-icon-adaptive.png",
+        "backgroundColor": "#1A1348ff"
+      }
+    }
   }
 }
