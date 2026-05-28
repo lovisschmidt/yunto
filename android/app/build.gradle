@@ -88,9 +88,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.yunto.app"
+    namespace 'com.yunto.app'
     defaultConfig {
-        applicationId "com.yunto.app"
+        applicationId 'com.yunto.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode = (findProperty('versionCode') ?: 1).toInteger()
