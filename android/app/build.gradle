@@ -117,8 +117,11 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            applicationIdSuffix ".debug"
+            resValue "string", "app_name", "Yunto Dev"
         }
         release {
+            resValue "string", "app_name", "Yunto"
             signingConfig signingConfigs.release
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
