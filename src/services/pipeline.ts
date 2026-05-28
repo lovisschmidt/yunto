@@ -3,7 +3,7 @@ import * as Speech from "expo-speech";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getPersona as getPersonaContent } from "../constants/personas.js";
-import { LlmError, streamResponse } from "./llm.js";
+import { LlmError, streamWithTools } from "./llm.js";
 import {
   type Session,
   appendMessage,
@@ -15,7 +15,13 @@ import { initBeeps, playStartBeep, playStopBeep, playThinkingTone } from "./soun
 import { SttError, transcribeAudio } from "./stt.js";
 import { deleteTempFile, fetchTtsAudio, playAudioFile, TtsError } from "./tts.js";
 
-export type PipelineStatus = "idle" | "recording" | "processing" | "thinking" | "speaking";
+export type PipelineStatus =
+  | "idle"
+  | "recording"
+  | "processing"
+  | "thinking"
+  | "searching"
+  | "speaking";
 
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 export const SENTENCE_END = /[.?!](\s|$)|\.{3}(\s|$)|\n\n/;
@@ -198,11 +204,16 @@ export function usePipeline() {
         tokenCount = 0;
       }
 
-      const llmStream = streamResponse(
+      const llmStream = streamWithTools(
         session.messages,
         persona.systemPrompt,
         keys.anthropicKey,
         abort.signal,
+        () => {
+          Speech.stop();
+          updateStatus("searching");
+          Speech.speak("Searching", { language: "en" });
+        },
       );
 
       for await (const token of llmStream) {
