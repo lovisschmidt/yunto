@@ -1,5 +1,5 @@
+import { randomUUID } from "expo-crypto";
 import * as FileSystem from "expo-file-system/legacy";
-
 export interface Message {
   role: "user" | "assistant";
   content: string;
@@ -28,7 +28,7 @@ function sessionPath(id: string): string {
 }
 
 export function generateId(): string {
-  return crypto.randomUUID();
+  return randomUUID();
 }
 
 export function formatSessionTitle(isoDate: string): string {

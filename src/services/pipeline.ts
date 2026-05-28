@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useAudioRecorder, RecordingPresets, setAudioModeAsync } from "expo-audio";
+import { RecordingPresets, setAudioModeAsync, useAudioRecorder } from "expo-audio";
 import * as Speech from "expo-speech";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import { getPersona as getPersonaContent } from "../constants/personas.js";
+import { LlmError, streamResponse } from "./llm.js";
 import {
   type Session,
   appendMessage,
-  getOrCreateActiveSession,
   createSession,
+  getOrCreateActiveSession,
 } from "./sessionStore.js";
-import { getApiKeys, hasApiKeys, getPersona, getPlaybackSpeed } from "./settingsStore.js";
-import { getPersona as getPersonaContent } from "../constants/personas.js";
-import { transcribeAudio, SttError } from "./stt.js";
-import { streamResponse, LlmError } from "./llm.js";
-import { fetchTtsAudio, playAudioFile, deleteTempFile, TtsError } from "./tts.js";
+import { getApiKeys, getPersona, getPlaybackSpeed, hasApiKeys } from "./settingsStore.js";
 import { initBeeps, playStartBeep, playStopBeep, playThinkingTone } from "./sounds.js";
+import { SttError, transcribeAudio } from "./stt.js";
+import { deleteTempFile, fetchTtsAudio, playAudioFile, TtsError } from "./tts.js";
 
 export type PipelineStatus = "idle" | "recording" | "processing" | "thinking" | "speaking";
 
