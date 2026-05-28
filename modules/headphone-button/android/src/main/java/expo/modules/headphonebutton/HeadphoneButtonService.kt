@@ -4,9 +4,12 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.Manifest
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -38,9 +41,28 @@ class HeadphoneButtonService : Service() {
     super.onCreate()
     instance = this
     createNotificationChannel()
-    startForeground(NOTIFICATION_ID, buildNotification())
+    startForegroundCompat()
     setupMediaSession()
   }
+
+  // The microphone type is only added once RECORD_AUDIO is granted: declaring it without
+  // the permission makes startForeground throw on Android 14+. refreshForegroundServiceType()
+  // re-runs this after the permission prompt so screen-off recording is allowed.
+  private fun startForegroundCompat() {
+    val notification = buildNotification()
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hasRecordAudioPermission()) {
+        type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+      }
+      startForeground(NOTIFICATION_ID, notification, type)
+    } else {
+      startForeground(NOTIFICATION_ID, notification)
+    }
+  }
+
+  private fun hasRecordAudioPermission(): Boolean =
+    checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     return START_STICKY
@@ -307,6 +329,11 @@ class HeadphoneButtonService : Service() {
 
     fun stopPlayback() {
       instance?.stopPlayback()
+    }
+
+    fun refreshForegroundServiceType() {
+      val inst = instance ?: return
+      inst.handler.post { inst.startForegroundCompat() }
     }
   }
 }

@@ -13,11 +13,17 @@ type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
 const STATUS_LABELS: Record<string, string> = {
   idle: "Tap or press headphone button",
+  connecting: "Connecting headphones...",
   recording: "Listening... (tap to stop)",
   processing: "Transcribing...",
   thinking: "Thinking...",
   searching: "Searching...",
   speaking: "Speaking...",
+};
+
+const MIC_SOURCE_LABELS: Record<string, string> = {
+  bluetooth: "Bluetooth mic",
+  phone: "Phone mic",
 };
 
 export function HomeScreen({ navigation }: Props) {
@@ -27,17 +33,20 @@ export function HomeScreen({ navigation }: Props) {
     status,
     keysPresent,
     errorMessage,
+    micSource,
     handleSinglePress,
     handleDoublePress,
     cancelPipeline,
     startNewSession,
     refreshApiKeyStatus,
+    refreshMicSource,
   } = usePipeline();
 
   useFocusEffect(
     useCallback(() => {
       refreshApiKeyStatus();
-    }, [refreshApiKeyStatus]),
+      refreshMicSource();
+    }, [refreshApiKeyStatus, refreshMicSource]),
   );
 
   // Stable refs so the event listener always calls the latest handler
@@ -85,6 +94,11 @@ export function HomeScreen({ navigation }: Props) {
         disabled={!keysPresent}
       >
         <WaveformAnimation status={status} />
+        {keysPresent && micSource ? (
+          <View style={styles.micBadge}>
+            <Text style={styles.micBadgeText}>{MIC_SOURCE_LABELS[micSource]}</Text>
+          </View>
+        ) : null}
         <Text style={[styles.statusText, isDark && styles.textDark]}>{statusLabel}</Text>
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
         {status !== "idle" ? (
@@ -132,6 +146,17 @@ const styles = StyleSheet.create({
     color: "#555555",
     textAlign: "center",
     paddingHorizontal: 32,
+  },
+  micBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: "#eef0ff",
+  },
+  micBadgeText: {
+    fontSize: 12,
+    color: "#6366f1",
+    fontWeight: "500",
   },
   textDark: {
     color: "#aaaaaa",

@@ -17,6 +17,16 @@ jest.mock("../stt.js", () => ({}));
 jest.mock("../llm.js", () => ({}));
 jest.mock("../tts.js", () => ({}));
 jest.mock("../sounds.js", () => ({}));
+jest.mock("../../../modules/headphone-button/index.js", () => ({
+  __esModule: true,
+  default: {
+    addListener: jest.fn(() => ({ remove: jest.fn() })),
+    getInputState: jest.fn(() => null),
+    connectBluetoothSco: jest.fn(),
+    releaseBluetoothSco: jest.fn(),
+    refreshForegroundServiceType: jest.fn(),
+  },
+}));
 
 import { SENTENCE_END, MAX_CHUNK_TOKENS } from "../pipeline.js";
 
