@@ -1,5 +1,5 @@
-import { fetch } from "expo/fetch";
 import * as FileSystem from "expo-file-system/legacy";
+import { fetch } from "expo/fetch";
 
 export class SttError extends Error {
   constructor(

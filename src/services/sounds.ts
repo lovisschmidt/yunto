@@ -1,6 +1,6 @@
-import * as FileSystem from "expo-file-system/legacy";
-import { createAudioPlayer } from "expo-audio";
 import type { AudioPlayer, AudioStatus } from "expo-audio";
+import { createAudioPlayer } from "expo-audio";
+import * as FileSystem from "expo-file-system/legacy";
 
 function buildWav(frequency: number, durationMs: number): string {
   const sampleRate = 44100;
