@@ -107,11 +107,10 @@ android {
         }
         release {
             def keystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
-            if (keystorePath == null) throw new GradleException("RELEASE_KEYSTORE_PATH is not set")
-            storeFile file(keystorePath)
-            storePassword System.getenv("RELEASE_KEYSTORE_PASSWORD")
-            keyAlias System.getenv("RELEASE_KEY_ALIAS")
-            keyPassword System.getenv("RELEASE_KEY_PASSWORD")
+            storeFile file(keystorePath ?: "debug.keystore")
+            storePassword System.getenv("RELEASE_KEYSTORE_PASSWORD") ?: "android"
+            keyAlias System.getenv("RELEASE_KEY_ALIAS") ?: "androiddebugkey"
+            keyPassword System.getenv("RELEASE_KEY_PASSWORD") ?: "android"
         }
     }
     buildTypes {
