@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Yunto is a voice-first AI companion app for Android built with React Native (TypeScript) using the **Expo bare workflow**. Users bring their own API keys (BYOK) — no backend, no server. The app is distributed as an APK via GitHub Releases (no Play Store).
 
-Package manager: **npm**.
+Package manager: **npm**. When adding Expo native modules, always use `npx expo install <package>` instead of `npm install` — it resolves the SDK-compatible version. Plain `npm install` will pull the latest release which may target a newer SDK and cause a native crash at startup (`NoClassDefFoundError` in `expo-modules-core`).
 
 ## Commands
 
