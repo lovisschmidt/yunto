@@ -4,7 +4,7 @@ export type ButtonEventPayload = {
   type: ButtonEventType;
 };
 
-export type BluetoothScoState = "disconnected";
+export type BluetoothScoState = "stop" | "disconnected";
 
 export type BluetoothScoEventPayload = {
   state: BluetoothScoState;

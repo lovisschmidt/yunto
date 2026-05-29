@@ -81,9 +81,10 @@ export function usePipeline() {
   const abortRef = useRef<AbortController | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scoActiveRef = useRef(false);
-  // Refs let the once-registered SCO-disconnect listener call the latest callbacks.
+  // Refs let the once-registered SCO listener call the latest callbacks.
   const cancelAllRef = useRef<() => void>(() => {});
   const speakErrorRef = useRef<(message: string, cause?: unknown) => void>(() => {});
+  const stopRef = useRef<() => void>(() => {});
 
   function updateStatus(s: PipelineStatus) {
     statusRef.current = s;
@@ -128,11 +129,16 @@ export function usePipeline() {
     init();
   }, [refreshMicSource]);
 
-  // Bluetooth headset dropping mid-turn aborts the turn (the captured mic source is gone).
+  // The headset's own hang-up (SCO drop while the headset stays connected) is the explicit
+  // BT-mode stop — its button is hijacked by call mode and can't reach us. Losing the headset
+  // entirely aborts the turn.
   useEffect(() => {
     if (!isAndroid) return;
     const sub = HeadphoneButtonModule.addListener("onBluetoothScoChanged", (event) => {
-      if (event.state === "disconnected" && statusRef.current !== "idle") {
+      if (statusRef.current === "idle") return;
+      if (event.state === "stop") {
+        if (statusRef.current === "recording") stopRef.current();
+      } else {
         cancelAllRef.current();
         updateStatus("idle");
         refreshMicSource();
@@ -222,6 +228,8 @@ export function usePipeline() {
   }, [recorder, speakError, releaseSco]);
 
   const stopRecordingAndProcess = useCallback(async () => {
+    // Idempotent: the headset hang-up event and an on-screen tap can both fire.
+    if (statusRef.current !== "recording") return;
     const currentSession = sessionRef.current;
     if (!currentSession) return;
 
@@ -383,6 +391,8 @@ export function usePipeline() {
       }
     }
   }, [recorder, speakError, resetIdleTimer, releaseSco]);
+
+  stopRef.current = stopRecordingAndProcess;
 
   const handleSinglePress = useCallback(async () => {
     if (!keysPresent) {

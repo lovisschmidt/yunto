@@ -235,14 +235,19 @@ class HeadphoneButtonModule : Module() {
     val callback =
       object : AudioDeviceCallback() {
         override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) {
-          if (removedDevices == null) return
+          // Ignore removals from our own teardown.
+          if (removedDevices == null || expectingTeardown) return
           val scoRemoved = removedDevices.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO }
-          val a2dpRemoved = removedDevices.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP }
-          // A2DP removal means the headset physically dropped (report always). A lone SCO
-          // removal during an intentional teardown is expected and suppressed.
-          if (a2dpRemoved || (scoRemoved && !expectingTeardown)) {
-            sendEvent("onBluetoothScoChanged", mapOf("state" to "disconnected"))
-          }
+          val outputRemoved = removedDevices.any { isBtOutput(it.type) }
+          if (!scoRemoved && !outputRemoved) return
+          // If the SCO mic dropped but the headset's output is still connected, the user
+          // ended the call (hang-up) → that's the explicit stop. If the output is gone too,
+          // the headset disconnected entirely → abort.
+          val am = audioManager
+          val outputStillConnected =
+            am?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)?.any { isBtOutput(it.type) } == true
+          val state = if (scoRemoved && outputStillConnected) "stop" else "disconnected"
+          sendEvent("onBluetoothScoChanged", mapOf("state" to state))
         }
       }
     am.registerAudioDeviceCallback(callback, mainHandler)
@@ -254,4 +259,9 @@ class HeadphoneButtonModule : Module() {
     deviceCallback?.let { audioManager?.unregisterAudioDeviceCallback(it) }
     deviceCallback = null
   }
+
+  // A connected BT headset's output device — present while the headset is connected even when
+  // SCO (the mic call) is not. TYPE_BLE_HEADSET is included to generalize to LE Audio later.
+  private fun isBtOutput(type: Int): Boolean =
+    type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || type == AudioDeviceInfo.TYPE_BLE_HEADSET
 }
