@@ -14,6 +14,10 @@ import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
+// Settle time after setCommunicationDevice succeeds, letting the physical SCO link come up
+// before recording so the first words aren't clipped.
+private const val SCO_SETTLE_MS = 300L
+
 class HeadphoneButtonModule : Module() {
   private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -132,8 +136,10 @@ class HeadphoneButtonModule : Module() {
     expectingTeardown = false
     scoPromise = promise
 
+    // On timeout, tear the route back down so a slow/failed link never leaves the
+    // session stuck in communication ("call") mode.
     scoTimeout =
-      Runnable { resolveScoPromise(false) }.also {
+      Runnable { teardownSco() }.also {
         mainHandler.postDelayed(it, timeoutMs.toLong())
       }
 
@@ -145,18 +151,13 @@ class HeadphoneButtonModule : Module() {
           it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
         }
       if (scoDevice == null || !am.setCommunicationDevice(scoDevice)) {
-        resolveScoPromise(false)
+        teardownSco()
         return
       }
-      // setCommunicationDevice takes effect synchronously; allow a short settle for the
-      // physical link before recording so the first words aren't clipped.
-      mainHandler.postDelayed(
-        {
-          val connected = am.communicationDevice?.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
-          resolveScoPromise(connected)
-        },
-        150,
-      )
+      // setCommunicationDevice succeeded — trust that routing rather than re-reading
+      // communicationDevice (which can briefly report stale/null and cause false fallbacks).
+      // Allow a short settle for the physical link so the first words aren't clipped.
+      mainHandler.postDelayed({ resolveScoPromise(true) }, SCO_SETTLE_MS)
     } else {
       // API 29-30: startBluetoothSco is asynchronous; wait for the connected broadcast.
       registerScoReceiver(am)
@@ -178,7 +179,7 @@ class HeadphoneButtonModule : Module() {
             ) ?: AudioManager.SCO_AUDIO_STATE_ERROR
           when (state) {
             AudioManager.SCO_AUDIO_STATE_CONNECTED -> resolveScoPromise(true)
-            AudioManager.SCO_AUDIO_STATE_ERROR -> resolveScoPromise(false)
+            AudioManager.SCO_AUDIO_STATE_ERROR -> teardownSco()
           }
         }
       }
@@ -209,15 +210,20 @@ class HeadphoneButtonModule : Module() {
   }
 
   private fun teardownSco() {
+    // Suppress the SCO device-removal callback that clearing the route triggers, so a teardown
+    // (including a failed-connect cleanup) is never mistaken for an unexpected headset drop.
+    expectingTeardown = true
     resolveScoPromise(false)
-    val am = audioManager ?: return
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-      am.clearCommunicationDevice()
-    } else {
-      @Suppress("DEPRECATION")
-      am.stopBluetoothSco()
+    val am = audioManager
+    if (am != null) {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        am.clearCommunicationDevice()
+      } else {
+        @Suppress("DEPRECATION")
+        am.stopBluetoothSco()
+      }
+      am.mode = AudioManager.MODE_NORMAL
     }
-    am.mode = AudioManager.MODE_NORMAL
     // Keep the teardown grace window long enough to swallow the SCO device-removal callback.
     mainHandler.postDelayed({ expectingTeardown = false }, 1500)
   }
