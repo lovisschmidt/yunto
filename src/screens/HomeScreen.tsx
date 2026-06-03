@@ -43,26 +43,35 @@ export function HomeScreen({ navigation }: Props) {
   // Stable refs so the event listener always calls the latest handler
   const singlePressRef = useRef(handleSinglePress);
   const doublePressRef = useRef(handleDoublePress);
+  const cancelPipelineRef = useRef(cancelPipeline);
   useEffect(() => {
     singlePressRef.current = handleSinglePress;
   }, [handleSinglePress]);
   useEffect(() => {
     doublePressRef.current = handleDoublePress;
   }, [handleDoublePress]);
+  useEffect(() => {
+    cancelPipelineRef.current = cancelPipeline;
+  }, [cancelPipeline]);
 
   // Headphone button wiring (Android only)
   useEffect(() => {
     if (Platform.OS !== "android") return;
     HeadphoneButtonModule.startListening();
-    const subscription = HeadphoneButtonModule.addListener("onButtonEvent", (event) => {
+    const buttonSub = HeadphoneButtonModule.addListener("onButtonEvent", (event) => {
       if (event.type === "single") {
         singlePressRef.current();
       } else if (event.type === "double") {
         doublePressRef.current();
       }
     });
+    // Audio focus loss (incoming call, another media app) → abort and reset to idle.
+    const interruptSub = HeadphoneButtonModule.addListener("onAudioInterrupted", () => {
+      cancelPipelineRef.current();
+    });
     return () => {
-      subscription.remove();
+      buttonSub.remove();
+      interruptSub.remove();
       HeadphoneButtonModule.stopListening();
     };
   }, []);
