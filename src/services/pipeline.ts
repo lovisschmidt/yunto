@@ -13,7 +13,13 @@ import {
 import { getApiKeys, getPersona, getPlaybackSpeed, hasApiKeys } from "./settingsStore.js";
 import { initBeeps, playStartBeep, playStopBeep, playThinkingTone } from "./sounds.js";
 import { SttError, transcribeAudio } from "./stt.js";
-import { MODEL_ID, openTtsStream, TtsStreamError, VOICE_ID } from "./ttsStream.js";
+import {
+  MODEL_ID,
+  openTtsStream,
+  TtsStreamError,
+  type TtsStreamHandle,
+  VOICE_ID,
+} from "./ttsStream.js";
 
 export type PipelineStatus =
   | "idle"
@@ -121,6 +127,10 @@ export function usePipeline() {
 
     const abort = new AbortController();
     abortRef.current = abort;
+    // Hoisted so the catch can tear down the AudioTrack on any pipeline error —
+    // otherwise an LlmError mid-response leaves buffered PCM playing while the
+    // spoken error message overlaps on top of it.
+    let tts: TtsStreamHandle | null = null;
 
     try {
       const [keys, personaKey, playbackSpeed] = await Promise.all([
@@ -165,7 +175,7 @@ export function usePipeline() {
       let fullResponse = "";
       let firstAudio = false;
 
-      const tts = openTtsStream({
+      tts = openTtsStream({
         apiKey: keys.elevenLabsKey,
         voiceId: VOICE_ID,
         modelId: MODEL_ID,
@@ -211,6 +221,9 @@ export function usePipeline() {
       updateSession(session);
       resetIdleTimer();
     } catch (err) {
+      // Tear down any buffered/in-flight TTS audio so the spoken error doesn't
+      // overlap with PCM that's already been written to the AudioTrack.
+      tts?.abort();
       Speech.stop();
       if (abort.signal.aborted) return;
       if (err instanceof SttError) {
