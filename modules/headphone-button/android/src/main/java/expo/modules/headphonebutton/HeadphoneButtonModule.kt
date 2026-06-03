@@ -9,7 +9,7 @@ class HeadphoneButtonModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("HeadphoneButton")
 
-    Events("onButtonEvent", "onPlaybackComplete")
+    Events("onButtonEvent", "onPlaybackComplete", "onAudioInterrupted")
 
     AsyncFunction("startListening") {
       HeadphoneButtonService.setModule(this@HeadphoneButtonModule)
@@ -30,12 +30,20 @@ class HeadphoneButtonModule : Module() {
       }
     }
 
-    Function("playUri") { uri: String, rate: Float ->
-      HeadphoneButtonService.playUri(uri, rate)
+    Function("startPcmStream") { sampleRate: Int, speed: Float ->
+      HeadphoneButtonService.startPcmStream(sampleRate, speed)
     }
 
-    Function("stopPlayback") {
-      HeadphoneButtonService.stopPlayback()
+    Function("feedPcm") { base64: String ->
+      HeadphoneButtonService.feedPcm(base64)
+    }
+
+    Function("endPcmStream") {
+      HeadphoneButtonService.endPcmStream()
+    }
+
+    Function("stopPcmStream") {
+      HeadphoneButtonService.stopPcmStream()
     }
   }
 
@@ -45,5 +53,9 @@ class HeadphoneButtonModule : Module() {
 
   fun emitPlaybackComplete() {
     sendEvent("onPlaybackComplete", emptyMap<String, Any>())
+  }
+
+  fun emitAudioInterrupted() {
+    sendEvent("onAudioInterrupted", emptyMap<String, Any>())
   }
 }
