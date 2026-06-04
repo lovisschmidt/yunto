@@ -1,6 +1,17 @@
+<p align="center">
+  <!-- Drop your teaser image at docs/teaser.png (the same one you use as the GitHub social image). -->
+  <img src="docs/teaser.png" alt="Yunto — voice-first AI companion for Android" width="100%">
+</p>
+
 # Yunto
 
 **A voice-first AI companion for Android. Hands-free, bring your own keys.**
+
+<p align="center">
+  <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/lovisschmidt/yunto?label=Download%20APK&style=for-the-badge&logo=android&logoColor=white&color=3DDC84" alt="Download the latest APK"></a>
+  <img src="https://img.shields.io/badge/platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Platform: Android">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/lovisschmidt/yunto?style=for-the-badge&color=blue" alt="MIT License"></a>
+</p>
 
 Yunto lets you have real conversations with an LLM while on the go — cycling, walking, commuting — without touching your phone. One headphone button press starts recording, a second press sends. That's it.
 
@@ -147,6 +158,15 @@ See [`CLAUDE.md`](CLAUDE.md) for project conventions and [`docs/specs/`](docs/sp
 ## Contributing
 
 Contributions welcome. If you're working on something substantial, open an issue first to align on direction. Implementation history and design decisions live as point-in-time specs under [`docs/specs/`](docs/specs/).
+
+---
+
+## Support
+
+Yunto is free and has no running cost for me — you bring your own keys. If it's useful to you and you'd like to support continued development, you can [buy me a coffee](https://buymeacoffee.com/lovisschmidt) or [tip on Ko-fi](https://ko-fi.com/lovisschmidt). Entirely optional.
+
+<a href="https://buymeacoffee.com/lovisschmidt"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
+<a href="https://ko-fi.com/lovisschmidt"><img src="https://img.shields.io/badge/Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Ko-fi"></a>
 
 ---
 
