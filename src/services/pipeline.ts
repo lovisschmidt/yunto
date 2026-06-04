@@ -138,9 +138,8 @@ export function usePipeline() {
 
   // Bonus stop path for headsets that surface their hang-up gesture as an SCO drop. The Jabra
   // doesn't — its tap mutes locally, which the metering detector below catches. On a real
-  // headset disconnect we always surface a notification, but we only abort if we're still
-  // capturing: aborting mid-reply would be jarring, and the in-flight processing or playback
-  // can finish (Android reroutes playback to the phone speaker automatically).
+  // headset disconnect, abort the in-flight turn (the capture or its reply was for a now-gone
+  // headset; processing or replying to a half-finished utterance isn't useful).
   useEffect(() => {
     if (!isAndroid) return;
     const sub = HeadphoneButtonModule.addListener("onBluetoothScoChanged", (event) => {
@@ -150,12 +149,10 @@ export function usePipeline() {
         return;
       }
       if (s === "idle") return;
+      cancelAllRef.current();
+      updateStatus("idle");
       refreshMicSource();
       speakErrorRef.current("Bluetooth disconnected.");
-      if (s === "recording" || s === "connecting") {
-        cancelAllRef.current();
-        updateStatus("idle");
-      }
     });
     return () => sub.remove();
   }, [refreshMicSource]);
