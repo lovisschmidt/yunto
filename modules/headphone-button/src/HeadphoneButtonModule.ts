@@ -4,8 +4,10 @@ import type { HeadphoneButtonModuleEvents, InputState } from "./HeadphoneButton.
 declare class HeadphoneButtonModule extends NativeModule<HeadphoneButtonModuleEvents> {
   startListening(): Promise<void>;
   stopListening(): Promise<void>;
-  playUri(uri: string, rate: number): void;
-  stopPlayback(): void;
+  startPcmStream(sampleRate: number, speed: number): void;
+  feedPcm(base64: string): void;
+  endPcmStream(): void;
+  stopPcmStream(): void;
   refreshForegroundServiceType(): void;
   getInputState(): InputState | null;
   connectBluetoothSco(timeoutMs: number): Promise<boolean>;

@@ -37,6 +37,7 @@ class HeadphoneButtonModule : Module() {
     Events(
       "onButtonEvent",
       "onPlaybackComplete",
+      "onAudioInterrupted",
       "onBluetoothScoChanged",
       "onBluetoothMicAvailabilityChanged",
     )
@@ -71,12 +72,20 @@ class HeadphoneButtonModule : Module() {
       }
     }
 
-    Function("playUri") { uri: String, rate: Float ->
-      HeadphoneButtonService.playUri(uri, rate)
+    Function("startPcmStream") { sampleRate: Int, speed: Float ->
+      HeadphoneButtonService.startPcmStream(sampleRate, speed)
     }
 
-    Function("stopPlayback") {
-      HeadphoneButtonService.stopPlayback()
+    Function("feedPcm") { base64: String ->
+      HeadphoneButtonService.feedPcm(base64)
+    }
+
+    Function("endPcmStream") {
+      HeadphoneButtonService.endPcmStream()
+    }
+
+    Function("stopPcmStream") {
+      HeadphoneButtonService.stopPcmStream()
     }
 
     // Re-applies the foreground service type once RECORD_AUDIO is granted, so the
@@ -127,6 +136,10 @@ class HeadphoneButtonModule : Module() {
 
   fun emitPlaybackComplete() {
     sendEvent("onPlaybackComplete", emptyMap<String, Any>())
+  }
+
+  fun emitAudioInterrupted() {
+    sendEvent("onAudioInterrupted", emptyMap<String, Any>())
   }
 
   private fun connectSco(timeoutMs: Int, promise: Promise) {

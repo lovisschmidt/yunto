@@ -19,6 +19,7 @@ export type InputState = {
 export type HeadphoneButtonModuleEvents = {
   onButtonEvent: (params: ButtonEventPayload) => void;
   onPlaybackComplete: (params: Record<string, never>) => void;
+  onAudioInterrupted: (params: Record<string, never>) => void;
   onBluetoothScoChanged: (params: BluetoothScoEventPayload) => void;
   onBluetoothMicAvailabilityChanged: (params: Record<string, never>) => void;
 };

@@ -22,7 +22,13 @@ import {
 } from "./settingsStore.js";
 import { initBeeps, playStartBeep, playStopBeep, playThinkingTone } from "./sounds.js";
 import { SttError, transcribeAudio } from "./stt.js";
-import { deleteTempFile, fetchTtsAudio, playAudioFile, TtsError } from "./tts.js";
+import {
+  MODEL_ID,
+  openTtsStream,
+  TtsStreamError,
+  type TtsStreamHandle,
+  VOICE_ID,
+} from "./ttsStream.js";
 
 export type PipelineStatus =
   | "idle"
@@ -36,8 +42,7 @@ export type PipelineStatus =
 export type MicSource = "bluetooth" | "phone";
 
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
-export const SENTENCE_END = /[.?!](\s|$)|\.{3}(\s|$)|\n\n/;
-export const MAX_CHUNK_TOKENS = 40;
+const SAMPLE_RATE = 22050;
 
 // Max wait for the Bluetooth SCO link before falling back to the phone mic.
 const SCO_CONNECT_TIMEOUT_MS = 3000;
@@ -81,7 +86,8 @@ export function usePipeline() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [micSource, setMicSource] = useState<MicSource | null>(null);
 
-  // BTPROBE: isMeteringEnabled lets us watch amplitude (see if a headset mute = digital silence).
+  // Metering is enabled so the BT-mode deliberate-mute detector (below) can watch amplitude
+  // for the true-digital-silence signature that the headset produces on its in-call tap.
   const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
   const statusRef = useRef<PipelineStatus>("idle");
   const sessionRef = useRef<Session | null>(null);
@@ -316,6 +322,11 @@ export function usePipeline() {
     playThinkingTone();
     Speech.speak("Thinking", { language: "en" });
 
+    // Hoisted so the catch can tear down the AudioTrack on any pipeline error —
+    // otherwise an LlmError mid-response leaves buffered PCM playing while the
+    // spoken error message overlaps on top of it.
+    let tts: TtsStreamHandle | null = null;
+
     try {
       const [keys, personaKey, playbackSpeed] = await Promise.all([
         getApiKeys(),
@@ -357,45 +368,21 @@ export function usePipeline() {
       updateStatus("thinking");
 
       let fullResponse = "";
-      let tokenBuffer = "";
-      let tokenCount = 0;
-      const ttsQueue: Promise<string>[] = [];
-      const isDone = { value: false };
-      let drainPromise: Promise<void> | null = null;
+      let firstAudio = false;
 
-      async function drainQueue() {
-        Speech.stop();
-        updateStatus("speaking");
-        let i = 0;
-        while (true) {
-          if (abort.signal.aborted) break;
-          if (i < ttsQueue.length) {
-            const uri = await ttsQueue[i]!;
-            i++;
-            if (!abort.signal.aborted) {
-              await playAudioFile(uri, abort.signal, playbackSpeed);
-            }
-            await deleteTempFile(uri);
-          } else if (isDone.value) {
-            break;
-          } else {
-            await new Promise<void>((r) => setTimeout(r, 20));
-          }
-        }
-      }
-
-      function flushBuffer() {
-        const text = tokenBuffer.trim();
-        if (!text) return;
-        const p = fetchTtsAudio(text, keys.elevenLabsKey, abort.signal);
-        p.catch(() => {}); // drain loop re-catches; this silences the unhandled-rejection warning
-        ttsQueue.push(p);
-        if (!drainPromise) {
-          drainPromise = drainQueue();
-        }
-        tokenBuffer = "";
-        tokenCount = 0;
-      }
+      tts = openTtsStream({
+        apiKey: keys.elevenLabsKey,
+        voiceId: VOICE_ID,
+        modelId: MODEL_ID,
+        sampleRate: SAMPLE_RATE,
+        speed: playbackSpeed,
+        signal: abort.signal,
+        onFirstAudio: () => {
+          firstAudio = true;
+          Speech.stop();
+          updateStatus("speaking");
+        },
+      });
 
       const llmStream = streamWithTools(
         session.messages,
@@ -403,26 +390,22 @@ export function usePipeline() {
         keys.anthropicKey,
         abort.signal,
         () => {
-          Speech.stop();
-          updateStatus("searching");
-          Speech.speak("Searching", { language: "en" });
+          // Only a spoken hint if a tool fires before any audio has started.
+          if (!firstAudio) {
+            Speech.stop();
+            updateStatus("searching");
+            Speech.speak("Searching", { language: "en" });
+          }
         },
       );
 
       for await (const token of llmStream) {
         if (abort.signal.aborted) break;
         fullResponse += token;
-        tokenBuffer += token;
-        tokenCount++;
-        if (SENTENCE_END.test(tokenBuffer) || tokenCount >= MAX_CHUNK_TOKENS) {
-          flushBuffer();
-        }
+        tts.feed(token);
       }
 
-      if (!abort.signal.aborted) flushBuffer();
-      isDone.value = true;
-
-      if (drainPromise) await drainPromise;
+      if (!abort.signal.aborted) await tts.end(); // resolves after AudioTrack fully drains
       if (abort.signal.aborted) return;
 
       session = await appendMessage(session, {
@@ -433,13 +416,16 @@ export function usePipeline() {
       updateSession(session);
       resetIdleTimer();
     } catch (err) {
+      // Tear down any buffered/in-flight TTS audio so the spoken error doesn't
+      // overlap with PCM that's already been written to the AudioTrack.
+      tts?.abort();
       Speech.stop();
       if (abort.signal.aborted) return;
       if (err instanceof SttError) {
         speakError(err.message, err);
       } else if (err instanceof LlmError) {
         speakError(err.message, err);
-      } else if (err instanceof TtsError) {
+      } else if (err instanceof TtsStreamError) {
         speakError(err.message, err);
       } else {
         speakError("Something went wrong. Please try again.", err);
