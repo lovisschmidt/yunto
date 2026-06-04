@@ -1,5 +1,9 @@
 # Yunto — Real Streaming TTS Implementation Spec
 
+> **Status:** Implemented (#20) · **Created:** 2026-06-03
+> **Supersedes** the TTS pipeline (Steps 4–6) of [2026-05-15-prototype](./2026-05-15-prototype.md).
+> **Point-in-time snapshot** of the plan as written; current behavior may have moved on. See the [spec index](./README.md).
+
 ## Context
 
 The prototype's TTS is **per-chunk REST**: `pipeline.ts` buffers LLM tokens into sentence/40-token chunks, fires parallel `fetchTtsAudio()` REST calls that each return a complete MP3, writes each to a temp file, and the native module plays the files one at a time via Android `MediaPlayer` (`playUri`). Consequences: audible gaps between files, prosody resets at every chunk boundary, and first audio can't play until the first chunk has _fully_ generated and downloaded.
