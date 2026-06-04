@@ -235,18 +235,24 @@ class HeadphoneButtonModule : Module() {
     val callback =
       object : AudioDeviceCallback() {
         override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) {
-          // Ignore removals from our own teardown.
-          if (removedDevices == null || expectingTeardown) return
-          val scoRemoved = removedDevices.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO }
+          if (removedDevices == null) return
           val outputRemoved = removedDevices.any { isBtOutput(it.type) }
-          if (!scoRemoved && !outputRemoved) return
-          // If the SCO mic dropped but the headset's output is still connected, the user
-          // ended the call (hang-up) → that's the explicit stop. If the output is gone too,
-          // the headset disconnected entirely → abort.
-          val am = audioManager
+          // BT output removal = the headset is genuinely gone. We never intentionally remove
+          // the output device, so this bypasses expectingTeardown — otherwise a disconnect
+          // that coincides with our own SCO teardown would get swallowed by the grace window.
+          if (outputRemoved) {
+            sendEvent("onBluetoothScoChanged", mapOf("state" to "disconnected"))
+            return
+          }
+          // SCO-only removals during our teardown are expected; suppress them.
+          if (expectingTeardown) return
+          val scoRemoved = removedDevices.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO }
+          if (!scoRemoved) return
+          // SCO dropped, output still listed → user ended the call (hang-up) on a headset that
+          // surfaces it. Re-check the live output list in case the A2DP removal is queued.
           val outputStillConnected =
-            am?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)?.any { isBtOutput(it.type) } == true
-          val state = if (scoRemoved && outputStillConnected) "stop" else "disconnected"
+            audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)?.any { isBtOutput(it.type) } == true
+          val state = if (outputStillConnected) "stop" else "disconnected"
           sendEvent("onBluetoothScoChanged", mapOf("state" to state))
         }
       }
