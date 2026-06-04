@@ -266,13 +266,21 @@ export function usePipeline() {
           updateStatus("recording");
           return;
         }
-        // SCO didn't connect (or routing failed): fall back to the phone mic and say so.
+        // SCO didn't connect (or routing failed): fall back to the phone mic. Speak the
+        // cue before starting the recorder so the TTS doesn't bleed into the captured audio.
         releaseSco();
+        await new Promise<void>((resolve) => {
+          Speech.speak("Using phone microphone", {
+            language: "en",
+            onDone: () => resolve(),
+            onStopped: () => resolve(),
+            onError: () => resolve(),
+          });
+        });
         recorder.record();
         playStartBeep();
         setMicSource("phone");
         updateStatus("recording");
-        Speech.speak("Using phone microphone", { language: "en" });
         return;
       }
 
