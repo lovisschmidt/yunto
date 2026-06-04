@@ -1,8 +1,10 @@
 # Yunto
 
-**A voice-first AI companion for Android. Hands-free, model-agnostic, bring your own keys.**
+**A voice-first AI companion for Android. Hands-free, bring your own keys.**
 
-Yunto lets you have real conversations with LLMs while on the go — cycling, walking, commuting — without touching your phone. One headphone button press starts recording, a second press sends. That's it.
+Yunto lets you have real conversations with an LLM while on the go — cycling, walking, commuting — without touching your phone. One headphone button press starts recording, a second press sends. That's it.
+
+> **Status:** Working prototype, shipping as an APK via [GitHub Releases](../../releases). Android only, distributed outside the Play Store. See [Shipped today](#shipped-today) for what's actually in the build and [Roadmap](#roadmap) for what isn't yet.
 
 ---
 
@@ -17,77 +19,86 @@ Every major voice mode (Claude, Gemini Live, ChatGPT) has the same structural li
 
 This gap exists for structural reasons: Google's ad model creates a trust problem, Apple's ecosystem control prevents letting third-party models in, and Anthropic/OpenAI want you using their app specifically. Nobody has an incentive to build an open, model-agnostic voice layer.
 
-LLM quality only became good enough for real conversation in 2024/2025. The market is just now ready.
-
 ---
 
 ## The Solution
 
-Yunto is a **capture layer**: a lightweight, always-accessible voice interface that hands off to the LLM of your choice and bridges back to deeper work when needed.
+Yunto is a **capture layer**: a lightweight, always-accessible voice interface that hands off to an LLM and stays out of your way. No backend, no account — you bring your own API keys and everything stays on your device.
 
-### Core Features (MVP)
+### Core principles
 
-**Headphone button trigger**
-One press starts recording, second press ends and sends. Push-to-talk — fully deterministic, no timeout tuning. Android Foreground Service with MediaSession handles the button interception. Only captures it when no other audio app (e.g. Spotify) is active — Android's last-active priority manages this automatically.
-
-**LLM agnosticism**
-Choose Claude, GPT-4, or Gemini per session. Model router with optional presets ("quick answer", "deep conversation") planned for later.
-
-**BYOK — Bring Your Own Key**
-Users provide their own API keys for OpenAI (STT + optionally LLM), Anthropic, Google, and ElevenLabs. No backend, no server, zero running cost for the developer.
-
-**Streaming pipeline**
-STT result → start LLM stream → begin TTS playback before LLM finishes generating. The first audio plays while the model is still thinking. This is what makes the interaction feel natural.
-
-**Session memory**
-Conversation history is maintained within a session. A new session starts fresh.
-
-**Silence detection (optional)**
-Configurable timeout (2–5 seconds) for situations where push-to-talk isn't possible (cycling with gloves, driving).
+- **Explicit stop, never silence-stop.** A turn ends on a deliberate action (button press or on-screen tap), so you can take long thinking pauses without being cut off. There is no VAD/auto-silence timer. This is a product decision, not a missing feature.
+- **Bring your own keys.** You provide API keys for the three services Yunto talks to. There is no server and zero running cost for the developer.
+- **Local-first.** Conversations are stored as plain JSON on the device. The only network calls are to the three external APIs (STT, LLM, TTS).
 
 ---
 
-## Workflow Integration
+## Shipped today
 
-At the end of each session, the LLM automatically generates:
+What's in the current build:
 
-- A compact summary (200–400 words)
-- Open questions
-- Action items
+**Headphone button trigger**
+One press starts recording, a second press ends and sends. Push-to-talk — fully deterministic, no timeout tuning. An Android Foreground Service with an active MediaSession intercepts the button. Yunto only captures it when no other audio app (e.g. Spotify) holds MediaSession priority — Android's last-active rule manages this automatically. On-screen tap does the same thing as a single press.
 
-**Export options:**
+**Bluetooth headset mic capture**
+When a classic-BT headset with a mic is connected, Yunto records through it (HFP/SCO) instead of the pocketed phone mic, then tears SCO down so the reply plays back in hi-fi A2DP. If SCO can't connect within ~3s it falls back to the phone mic with a spoken cue and a badge. Because the headset firmware owns the button during a call, the in-headset mute gesture is detected (true digital silence on the uplink) as the stop signal in BT mode. A home-screen badge shows which mic is active. (LE Audio is on the roadmap.)
 
-- **"Continue in Claude/ChatGPT"**: Copies a prepared context prompt to clipboard — open the web UI, paste, continue seamlessly
-- **Markdown export**: Save the session as a file
+**Streaming pipeline**
+Whisper STT → Claude stream → ElevenLabs streaming TTS, played gaplessly. Audio starts playing while the model is still generating — first speech comes within a second or two of sending, which is what makes the interaction feel natural. TTS streams over a WebSocket into a native Android `AudioTrack` (no inter-sentence gaps).
 
-> Yunto is the **capture layer**, the web UI is the **deep work layer**, the LLM-generated summary is the **bridge** between the two.
+**Personas**
+Three selectable conversation styles, set in Settings: **General Conversation** (default), **Brainstorming**, and **Agent** (task-focused). Each is a tuned system prompt.
+
+**Tools**
+The model can call tools during a conversation when a question needs a hard fact or a calculation: **Wikipedia search**, **current date/time**, and a **calculator**. All free, no extra keys. When a tool fires before any audio has started, Yunto speaks a short "Searching" cue.
+
+**Adjustable playback speed**
+TTS playback speed is configurable from 0.5× to 2×.
+
+**Sessions**
+Conversation history is kept within a session and persisted locally as JSON. A new session starts fresh; an idle session rolls over after 10 minutes. Browse past sessions in a list, open one to read the transcript, and use **Copy All** to copy the full transcript to the clipboard.
+
+**Spoken errors**
+Failures (bad key, network, etc.) are announced via Android TTS, then the app returns to idle.
+
+---
+
+## Roadmap
+
+Designed for, but not yet built:
+
+- **Multiple LLM providers** — GPT and Gemini behind a model router, with optional presets ("quick answer", "deep conversation"). Today the LLM is **Claude only**.
+- **Session workflow integration** — an LLM-generated end-of-session summary, open questions, and action items; "Continue in Claude/ChatGPT" clipboard export; Markdown export. Today sessions support transcript copy only.
+- **LE Audio mic** — wideband LC3 capture with simultaneous hi-fi output (no SCO teardown, and likely frees the headset button).
+- **More tools** — weather, unit conversion, BYOK web search for current events.
 
 ---
 
 ## Technical Stack
 
-| Component        | Decision                             | Reason                                            |
-| ---------------- | ------------------------------------ | ------------------------------------------------- |
-| Framework        | React Native (TypeScript)            | Developer-familiar, cross-platform possible later |
-| STT              | Whisper API (OpenAI)                 | Quality, price ($0.006/min), stable API           |
-| TTS              | ElevenLabs Flash                     | ~75ms latency, quality                            |
-| LLM              | Claude / GPT-4 / Gemini (selectable) | BYOK, model-agnostic                              |
-| Headphone button | Native Module (Android MediaSession) | Only part requiring native Android code           |
-| Data persistence | Local (JSON)                         | No backend required                               |
-
-**Latency pipeline detail:** STT result arrives → LLM stream starts immediately → first TTS chunks are enqueued before LLM finishes → audio begins playing within ~1–2 seconds of sending. This is the biggest driver of perceived quality.
+| Component                 | Decision                                                                    | Reason                                              |
+| ------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------- |
+| Framework                 | React Native (TypeScript), Expo bare workflow                               | Developer-familiar; native escape hatch when needed |
+| STT                       | OpenAI Whisper (REST)                                                       | Quality, price (~$0.006/min), stable API            |
+| LLM                       | Claude (Anthropic), streaming                                               | Single provider today; router planned               |
+| TTS                       | ElevenLabs Flash, streaming over WebSocket                                  | ~75ms model latency; gapless native playback        |
+| Headphone button + BT mic | Native Expo Module (Kotlin) — MediaSession, Foreground Service, SCO control | The only part requiring native Android code         |
+| Audio playback            | Native Android `AudioTrack` (PCM stream)                                    | Gapless streaming TTS                               |
+| Key storage               | expo-secure-store                                                           | Keys never leave the device                         |
+| Data persistence          | Local JSON (expo-file-system)                                               | No backend required                                 |
 
 **Android-specific notes:**
 
-- Foreground Service + active MediaSession required for background button capture
-- Some manufacturers (Samsung, Xiaomi) use aggressive battery optimization — users may need to manually exempt the app
-- Push-to-talk works as long as no other music app holds MediaSession priority
+- Foreground Service + active MediaSession are required for background button capture.
+- Bluetooth mic capture is classic HFP/SCO and needs Android 12+ (API 31) for the modern routing path; below API 29 it falls back to the phone mic.
+- Some manufacturers (Samsung, Xiaomi) use aggressive battery optimization — users may need to manually exempt the app.
+- Push-to-talk works as long as no other music app holds MediaSession priority.
 
 ---
 
 ## User Cost Estimate
 
-Based on ~30 minutes of active voice use per day:
+Based on ~30 minutes of active voice use per day, paid via your own API keys:
 
 | Service                       | Cost/month        |
 | ----------------------------- | ----------------- |
@@ -96,49 +107,46 @@ Based on ~30 minutes of active voice use per day:
 | LLM — e.g. Claude Sonnet      | ~$3–5             |
 | **Total**                     | **~$13–15/month** |
 
-All costs are borne by the user via their own API keys. Developer running cost: $0.
+Developer running cost: $0.
 
 ---
 
 ## Setup
 
-> Work in progress — instructions will be added as the app is built.
-
 **Prerequisites:**
 
-- Android device (API 26+)
-- API keys: OpenAI (STT), one LLM provider (Anthropic / OpenAI / Google), ElevenLabs (TTS)
+- An Android device (API 26+; Bluetooth mic needs API 31+)
+- Three API keys, entered in **Settings** on first run:
+  - **OpenAI** — Whisper STT
+  - **Anthropic** — Claude LLM
+  - **ElevenLabs** — TTS
+
+**Download the APK** from [Releases](../../releases) and sideload it. The release build (`com.yunto.app`) and a debug build (`com.yunto.app.debug`, labelled "Yunto Dev") can coexist on the same device.
 
 **Build from source:**
 
 ```bash
-# coming soon
+nvm use            # Node 24 (see .nvmrc)
+npm install
+npm run android    # build and run on a connected device/emulator
 ```
 
-**Or download the APK** from [Releases](../../releases) and sideload it.
+Other useful commands:
 
----
+```bash
+npm start          # Metro bundler
+npm run lint       # oxlint
+npm run typecheck  # tsc --noEmit
+npm test           # Jest
+```
 
-## Status
-
-This project is in early development. The architecture and feature set are defined; implementation has not started yet.
-
-Planned build order:
-
-1. RN project setup, settings screen, LLM text integration
-2. Audio pipeline (STT → LLM streaming → TTS)
-3. Headphone button native module
-4. Model router, session summary, export
-
-Estimated effort: ~25 hours across 2–3 weekends.
+See [`CLAUDE.md`](CLAUDE.md) for project conventions and [`docs/specs/`](docs/specs/) for the implementation specs.
 
 ---
 
 ## Contributing
 
-Contributions welcome. Issues labeled [`good first issue`](../../issues?q=is%3Aopen+label%3A%22good+first+issue%22) are a good starting point.
-
-If you're working on something substantial, open an issue first to align on direction.
+Contributions welcome. If you're working on something substantial, open an issue first to align on direction. Implementation history and design decisions live as point-in-time specs under [`docs/specs/`](docs/specs/).
 
 ---
 

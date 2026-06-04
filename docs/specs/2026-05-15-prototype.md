@@ -1,5 +1,12 @@
 # Yunto — Prototype Implementation Spec
 
+> **Status:** Implemented (#4; Tool Use appendix in #16) · **Created:** 2026-05-15
+> **Point-in-time snapshot.** Documents the plan as written; later specs moved parts of it on. Not edited to reflect current behavior — see the [spec index](./README.md).
+> **Partially superseded:**
+>
+> - TTS pipeline (Steps 4–6, REST per-chunk) → real streaming in [2026-06-03-tts-streaming](./2026-06-03-tts-streaming.md).
+> - "Double Press Behavior" / talk-phase taps → any tap during recording now stops & processes (no mid-talk cancel) per [2026-06-04-bluetooth-mic](./2026-06-04-bluetooth-mic.md).
+
 ## Overview
 
 Voice-first AI companion for Android. Core loop: headphone button → record → Whisper STT → Claude stream → ElevenLabs TTS (per chunk, streaming playback). BYOK. No backend. Sessions persisted locally.
