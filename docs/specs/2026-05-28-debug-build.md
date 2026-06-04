@@ -1,5 +1,8 @@
 # Debug Build Co-installation Spec
 
+> **Status:** Implemented (#15) · **Created:** 2026-05-28
+> **Point-in-time snapshot** of the plan as written; current behavior may have moved on. See the [spec index](./README.md).
+
 ## Overview
 
 The debug build (produced by `npm run android`) and the release APK (distributed via GitHub Releases) can coexist on the same device as two separate apps. This allows the developer to use the release APK as a daily driver while freely installing and uninstalling debug builds during development.

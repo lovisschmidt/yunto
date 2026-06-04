@@ -1,5 +1,9 @@
 # Spec: Bluetooth headphone microphone capture
 
+> **Status:** Implemented (#19) · **Created:** 2026-06-04
+> **Supersedes** the talk-phase tap / double-press behavior of [2026-05-15-prototype](./2026-05-15-prototype.md): any tap during recording now stops & processes (no mid-talk cancel).
+> **Point-in-time snapshot** of the plan as written; current behavior may have moved on. See the [spec index](./README.md).
+
 ## Context
 
 Yunto is a voice-first, headphone-button-driven companion. The whole UX assumes the user is wearing
