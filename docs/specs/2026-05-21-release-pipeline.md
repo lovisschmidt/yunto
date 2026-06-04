@@ -1,5 +1,8 @@
 # Automated Release Pipeline Spec
 
+> **Status:** Implemented (#8) · **Created:** 2026-05-21
+> **Point-in-time snapshot** of the plan as written; current behavior may have moved on. See the [spec index](./README.md).
+
 ## Overview
 
 On every merge to `main`, a GitHub Actions workflow builds a signed release APK and
