@@ -11,6 +11,7 @@ import {
   appendMessage,
   createSession,
   getOrCreateActiveSession,
+  saveSession,
 } from "./sessionStore.js";
 import {
   getApiKeys,
@@ -335,6 +336,37 @@ export function usePipeline() {
     // spoken error message overlaps on top of it.
     let tts: TtsStreamHandle | null = null;
 
+    // The user message is persisted before the reply streams. If the turn is
+    // cancelled or errors out before the assistant reply is saved, this holds
+    // the session so reconcilePendingTurn can repair the orphaned prompt.
+    let pendingUserTurn: Session | null = null;
+    let fullResponse = "";
+
+    // A cancelled/failed turn leaves a user message with no reply, which the next
+    // turn would otherwise be answered against. Keep any partial reply the user
+    // already heard as context; if nothing was produced yet, drop the orphan.
+    async function reconcilePendingTurn() {
+      if (!pendingUserTurn) return;
+      const partial = fullResponse.trim();
+      if (partial) {
+        updateSession(
+          await appendMessage(pendingUserTurn, {
+            role: "assistant",
+            content: partial,
+            timestamp: new Date().toISOString(),
+          }),
+        );
+      } else {
+        const rolledBack: Session = {
+          ...pendingUserTurn,
+          messages: pendingUserTurn.messages.slice(0, -1),
+        };
+        await saveSession(rolledBack);
+        updateSession(rolledBack);
+      }
+      pendingUserTurn = null;
+    }
+
     try {
       const [keys, personaKey, playbackSpeed] = await Promise.all([
         getApiKeys(),
@@ -371,11 +403,11 @@ export function usePipeline() {
         content: transcript,
         timestamp: new Date().toISOString(),
       });
+      pendingUserTurn = session;
       updateSession(session);
 
       updateStatus("thinking");
 
-      let fullResponse = "";
       let firstAudio = false;
 
       tts = openTtsStream({
@@ -421,6 +453,7 @@ export function usePipeline() {
         content: fullResponse,
         timestamp: new Date().toISOString(),
       });
+      pendingUserTurn = null;
       updateSession(session);
       resetIdleTimer();
     } catch (err) {
@@ -439,6 +472,9 @@ export function usePipeline() {
         speakError("Something went wrong. Please try again.", err);
       }
     } finally {
+      // Repair a cancelled/errored turn before the next one starts. On the
+      // success path pendingUserTurn is already null, so this is a no-op.
+      await reconcilePendingTurn();
       if (!abort.signal.aborted) {
         updateStatus("idle");
       }

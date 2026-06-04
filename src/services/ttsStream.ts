@@ -37,6 +37,9 @@ export function openTtsStream(opts: TtsStreamOptions): TtsStreamHandle {
   let audioStarted = false;
   let finalSettled = false;
   let flushRequested = false;
+  // Unblocks end()'s playback-drain wait when abort() fires, since stopPcmStream
+  // tears the track down without ever emitting onPlaybackComplete.
+  let resolvePlayback: (() => void) | null = null;
   const pending: string[] = [];
 
   let resolveFinal!: () => void;
@@ -166,10 +169,18 @@ export function openTtsStream(opts: TtsStreamOptions): TtsStreamHandle {
     }
 
     await new Promise<void>((resolve) => {
-      const sub = HeadphoneButtonModule.addListener("onPlaybackComplete", () => {
-        sub.remove();
+      let sub: ReturnType<typeof HeadphoneButtonModule.addListener> | null = null;
+      const finish = () => {
+        sub?.remove();
+        resolvePlayback = null;
         resolve();
-      });
+      };
+      resolvePlayback = finish;
+      if (aborted) {
+        finish();
+        return;
+      }
+      sub = HeadphoneButtonModule.addListener("onPlaybackComplete", finish);
       HeadphoneButtonModule.endPcmStream();
     });
 
@@ -190,6 +201,7 @@ export function openTtsStream(opts: TtsStreamOptions): TtsStreamHandle {
       // ignore
     }
     settleFinalResolve(); // settle pending promises without error
+    resolvePlayback?.(); // release end()'s drain wait so the turn can be finalized
   }
 
   signal.addEventListener("abort", abort);
