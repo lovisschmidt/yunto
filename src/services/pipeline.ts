@@ -166,11 +166,21 @@ export function usePipeline() {
         if (s === "recording") stopRef.current();
         return;
       }
-      if (s === "idle") return;
+      // Genuine headset disconnect. While idle there's nothing in flight — fall back to the
+      // phone mic silently. A spoken error here would be pointless (the headset is gone) and
+      // would only blare from the phone speaker.
+      if (s === "idle") {
+        refreshMicSource();
+        return;
+      }
+      // A turn was in flight on the now-gone headset; abort it. Only announce the drop when the
+      // user was actively recording, so they know to retry on the phone mic. Otherwise
+      // (processing / thinking / speaking a reply) tear the turn down quietly.
+      const wasRecording = s === "recording";
       cancelAllRef.current();
       updateStatus("idle");
       refreshMicSource();
-      speakErrorRef.current("Bluetooth disconnected.");
+      if (wasRecording) speakErrorRef.current("Bluetooth disconnected.");
     });
     return () => sub.remove();
   }, [refreshMicSource]);
