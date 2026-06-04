@@ -43,6 +43,12 @@ export const MAX_CHUNK_TOKENS = 40;
 const SCO_CONNECT_TIMEOUT_MS = 3000;
 // Grace period after tearing SCO down so A2DP resumes before the reply plays back in hi-fi.
 const A2DP_RESUME_SETTLE_MS = 400;
+// Deliberate-mute stop detector (BT mode). expo-audio reports -160 dBFS for true digital silence,
+// which the headset emits when the user mutes via its in-call gesture. A live mic floors well above
+// this even during natural pauses, so the threshold cleanly separates "muted" from "thinking".
+const SILENCE_THRESHOLD_DBFS = -150;
+const SILENCE_HOLD_MS = 900;
+const METERING_POLL_MS = 200;
 
 const isAndroid = Platform.OS === "android";
 
@@ -75,7 +81,8 @@ export function usePipeline() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [micSource, setMicSource] = useState<MicSource | null>(null);
 
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  // BTPROBE: isMeteringEnabled lets us watch amplitude (see if a headset mute = digital silence).
+  const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
   const statusRef = useRef<PipelineStatus>("idle");
   const sessionRef = useRef<Session | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -147,6 +154,41 @@ export function usePipeline() {
     });
     return () => sub.remove();
   }, [refreshMicSource]);
+
+  // BT-mode deliberate-mute stop detector. In BT mode the headset button is owned by call mode
+  // and never reaches our MediaSession, but headsets like the Jabra mute the SCO uplink on the
+  // in-call tap, dropping the captured stream to true digital silence (metering === -160). A live
+  // mic floors at ~-70 even during natural pauses, so SILENCE_THRESHOLD_DBFS = -150 cleanly
+  // separates "deliberate mute" from "thinking pause". Armed only after live audio has been seen,
+  // so the brief -160 at recording start doesn't trigger.
+  useEffect(() => {
+    if (displayStatus !== "recording") return;
+    if (!scoActiveRef.current) return; // phone-mic mode: taps reach us via MediaSession
+    let armed = false;
+    let silenceMs = 0;
+    let triggered = false;
+    const id = setInterval(() => {
+      if (triggered) return;
+      let m: number | undefined;
+      try {
+        m = recorder.getStatus().metering;
+      } catch {
+        return;
+      }
+      if (m == null) return;
+      if (m > SILENCE_THRESHOLD_DBFS) {
+        armed = true;
+        silenceMs = 0;
+      } else if (armed) {
+        silenceMs += METERING_POLL_MS;
+        if (silenceMs >= SILENCE_HOLD_MS) {
+          triggered = true;
+          stopRef.current();
+        }
+      }
+    }, METERING_POLL_MS);
+    return () => clearInterval(id);
+  }, [displayStatus, recorder]);
 
   const resetIdleTimer = useCallback(() => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
@@ -417,15 +459,21 @@ export function usePipeline() {
   }, [keysPresent, startRecording, stopRecordingAndProcess, cancelAll, speakError]);
 
   const handleDoublePress = useCallback(async () => {
-    if (statusRef.current !== "idle") {
-      cancelAll();
-      updateStatus("idle");
-    } else {
+    const current = statusRef.current;
+    if (current === "connecting") return;
+    if (current === "recording") {
+      // Talk-phase rule: any tap = stop. No mid-talk cancel.
+      await stopRecordingAndProcess();
+    } else if (current === "idle") {
       const fresh = await createSession();
       updateSession(fresh);
       await startRecording();
+    } else {
+      // Reply phases (processing/thinking/searching/speaking): cancel.
+      cancelAll();
+      updateStatus("idle");
     }
-  }, [cancelAll, startRecording]);
+  }, [cancelAll, startRecording, stopRecordingAndProcess]);
 
   const startNewSession = useCallback(async () => {
     cancelAll();
