@@ -409,6 +409,7 @@ export function usePipeline() {
       updateStatus("thinking");
 
       let firstAudio = false;
+      let searchingAnnounced = false;
 
       tts = openTtsStream({
         apiKey: keys.elevenLabsKey,
@@ -430,8 +431,10 @@ export function usePipeline() {
         keys.anthropicKey,
         abort.signal,
         () => {
-          // Only a spoken hint if a tool fires before any audio has started.
-          if (!firstAudio) {
+          // Spoken hint at most once per turn, only if a tool fires before any
+          // audio has started — repeated tool rounds must not re-announce it.
+          if (!firstAudio && !searchingAnnounced) {
+            searchingAnnounced = true;
             Speech.stop();
             updateStatus("searching");
             Speech.speak("Searching", { language: "en" });
