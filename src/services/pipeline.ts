@@ -11,6 +11,7 @@ import {
   appendMessage,
   createSession,
   getOrCreateActiveSession,
+  isSessionStale,
   saveSession,
 } from "./sessionStore.js";
 import {
@@ -240,6 +241,17 @@ export function usePipeline() {
 
   const startRecording = useCallback(async () => {
     setErrorMessage(null);
+    // Roll to a fresh session if the current one has been idle past the timeout.
+    // The foreground service keeps the JS process alive for hours, so the in-app
+    // idle timer (a 10-min setTimeout) can't be relied on — Android Doze throttles
+    // timers while backgrounded. Re-check staleness against lastActivityAt at the
+    // moment the user actually starts talking so a turn never lands in an hours-old
+    // session. Double-press / new-session paths already created a fresh (non-stale)
+    // session before reaching here, so this is a no-op for them.
+    const current = sessionRef.current;
+    if (current && isSessionStale(current)) {
+      updateSession(await createSession());
+    }
     try {
       const btUid = isAndroid
         ? (HeadphoneButtonModule.getInputState()?.bluetoothUid ?? null)

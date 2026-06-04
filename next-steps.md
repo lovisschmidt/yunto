@@ -6,8 +6,8 @@ claude --worktree feature-initial-setup --resume 23a76383-332d-4f8a-9f82-4a22175
 [x] fix icon
 [x] ensure, that the headphone micro is used!
 [x] cancel does lead to the last message being processed again. It should not.
-[ ] three times "searching"
-[ ] verify the session ending after 10min
+[x] three times "searching"
+[x] verify the session ending after 10min
 [ ] cleanup specs
 
 Finalisation:
