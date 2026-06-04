@@ -277,9 +277,16 @@ export function usePipeline() {
     const currentSession = sessionRef.current;
     if (!currentSession) return;
 
+    // Install the AbortController up front: a BT-disconnect listener that arrives during the
+    // early teardown phase (recorder.stop, A2DP settle) calls abortRef.current?.abort() to
+    // cancel the in-flight turn, which would no-op if the controller didn't exist yet.
+    const abort = new AbortController();
+    abortRef.current = abort;
+
     playStopBeep();
     updateStatus("processing");
     await recorder.stop();
+    if (abort.signal.aborted) return;
     const audioUri = recorder.uri;
 
     if (scoActiveRef.current) {
@@ -288,6 +295,7 @@ export function usePipeline() {
       releaseSco();
       await new Promise<void>((r) => setTimeout(r, A2DP_RESUME_SETTLE_MS));
     }
+    if (abort.signal.aborted) return;
 
     if (!audioUri) {
       speakError("Recording failed. Please try again.");
@@ -297,9 +305,6 @@ export function usePipeline() {
 
     playThinkingTone();
     Speech.speak("Thinking", { language: "en" });
-
-    const abort = new AbortController();
-    abortRef.current = abort;
 
     try {
       const [keys, personaKey, playbackSpeed] = await Promise.all([
