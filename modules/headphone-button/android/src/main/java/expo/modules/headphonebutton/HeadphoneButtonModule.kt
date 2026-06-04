@@ -34,7 +34,12 @@ class HeadphoneButtonModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("HeadphoneButton")
 
-    Events("onButtonEvent", "onPlaybackComplete", "onBluetoothScoChanged")
+    Events(
+      "onButtonEvent",
+      "onPlaybackComplete",
+      "onBluetoothScoChanged",
+      "onBluetoothMicAvailabilityChanged",
+    )
 
     OnCreate {
       registerDeviceCallback()
@@ -234,6 +239,17 @@ class HeadphoneButtonModule : Module() {
     unregisterDeviceCallback()
     val callback =
       object : AudioDeviceCallback() {
+        override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) {
+          if (addedDevices == null) return
+          val btRelated =
+            addedDevices.any {
+              it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || isBtOutput(it.type)
+            }
+          if (btRelated) {
+            sendEvent("onBluetoothMicAvailabilityChanged", emptyMap<String, Any>())
+          }
+        }
+
         override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) {
           if (removedDevices == null) return
           val outputRemoved = removedDevices.any { isBtOutput(it.type) }
@@ -242,9 +258,11 @@ class HeadphoneButtonModule : Module() {
           // that coincides with our own SCO teardown would get swallowed by the grace window.
           if (outputRemoved) {
             sendEvent("onBluetoothScoChanged", mapOf("state" to "disconnected"))
+            sendEvent("onBluetoothMicAvailabilityChanged", emptyMap<String, Any>())
             return
           }
-          // SCO-only removals during our teardown are expected; suppress them.
+          // SCO-only removals during our teardown are expected; suppress them (including the
+          // availability event, so the badge doesn't flicker to "Phone mic" on a normal turn end).
           if (expectingTeardown) return
           val scoRemoved = removedDevices.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO }
           if (!scoRemoved) return
@@ -254,6 +272,7 @@ class HeadphoneButtonModule : Module() {
             audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)?.any { isBtOutput(it.type) } == true
           val state = if (outputStillConnected) "stop" else "disconnected"
           sendEvent("onBluetoothScoChanged", mapOf("state" to state))
+          sendEvent("onBluetoothMicAvailabilityChanged", emptyMap<String, Any>())
         }
       }
     am.registerAudioDeviceCallback(callback, mainHandler)

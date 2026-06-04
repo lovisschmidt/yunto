@@ -136,6 +136,16 @@ export function usePipeline() {
     init();
   }, [refreshMicSource]);
 
+  // Keep the mic-source badge live: refresh on BT device connect/disconnect so the badge
+  // updates without needing to start a recording or refocus the screen.
+  useEffect(() => {
+    if (!isAndroid) return;
+    const sub = HeadphoneButtonModule.addListener("onBluetoothMicAvailabilityChanged", () => {
+      refreshMicSource();
+    });
+    return () => sub.remove();
+  }, [refreshMicSource]);
+
   // Bonus stop path for headsets that surface their hang-up gesture as an SCO drop. The Jabra
   // doesn't — its tap mutes locally, which the metering detector below catches. On a real
   // headset disconnect, abort the in-flight turn (the capture or its reply was for a now-gone
