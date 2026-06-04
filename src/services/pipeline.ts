@@ -1,7 +1,9 @@
 import { RecordingPresets, setAudioModeAsync, useAudioRecorder } from "expo-audio";
 import * as Speech from "expo-speech";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PermissionsAndroid, Platform } from "react-native";
 
+import HeadphoneButtonModule from "../../modules/headphone-button/index.js";
 import { getPersona as getPersonaContent } from "../constants/personas.js";
 import { LlmError, streamWithTools } from "./llm.js";
 import {
@@ -10,7 +12,14 @@ import {
   createSession,
   getOrCreateActiveSession,
 } from "./sessionStore.js";
-import { getApiKeys, getPersona, getPlaybackSpeed, hasApiKeys } from "./settingsStore.js";
+import {
+  getApiKeys,
+  getPermissionsRequested,
+  getPersona,
+  getPlaybackSpeed,
+  hasApiKeys,
+  setPermissionsRequested,
+} from "./settingsStore.js";
 import { initBeeps, playStartBeep, playStopBeep, playThinkingTone } from "./sounds.js";
 import { SttError, transcribeAudio } from "./stt.js";
 import {
@@ -23,31 +32,88 @@ import {
 
 export type PipelineStatus =
   | "idle"
+  | "connecting"
   | "recording"
   | "processing"
   | "thinking"
   | "searching"
   | "speaking";
 
+export type MicSource = "bluetooth" | "phone";
+
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 const SAMPLE_RATE = 22050;
+
+// Max wait for the Bluetooth SCO link before falling back to the phone mic.
+const SCO_CONNECT_TIMEOUT_MS = 3000;
+// Grace period after tearing SCO down so A2DP resumes before the reply plays back in hi-fi.
+const A2DP_RESUME_SETTLE_MS = 400;
+// Deliberate-mute stop detector (BT mode). expo-audio reports -160 dBFS for true digital silence,
+// which the headset emits when the user mutes via its in-call gesture. A live mic floors well above
+// this even during natural pauses, so the threshold cleanly separates "muted" from "thinking".
+const SILENCE_THRESHOLD_DBFS = -150;
+const SILENCE_HOLD_MS = 900;
+const METERING_POLL_MS = 200;
+
+const isAndroid = Platform.OS === "android";
+
+// Requests RECORD_AUDIO (and BLUETOOTH_CONNECT on Android 12+) once, up front, so the
+// foreground service can carry the microphone type and we can route to a named BT device.
+async function requestInitialPermissions(): Promise<void> {
+  if (!isAndroid) return;
+  if (await getPermissionsRequested()) return;
+  const perms = [PermissionsAndroid.PERMISSIONS.RECORD_AUDIO];
+  if (typeof Platform.Version === "number" && Platform.Version >= 31) {
+    perms.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
+  }
+  try {
+    await PermissionsAndroid.requestMultiple(perms);
+  } catch {
+    // Ignore — recording falls back to the phone mic if a permission is missing.
+  }
+  await setPermissionsRequested();
+}
+
+function detectMicSource(): MicSource {
+  if (!isAndroid) return "phone";
+  return HeadphoneButtonModule.getInputState()?.bluetoothUid ? "bluetooth" : "phone";
+}
 
 export function usePipeline() {
   const [displayStatus, setDisplayStatus] = useState<PipelineStatus>("idle");
   const [session, setSession] = useState<Session | null>(null);
   const [keysPresent, setKeysPresent] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [micSource, setMicSource] = useState<MicSource | null>(null);
 
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  // Metering is enabled so the BT-mode deliberate-mute detector (below) can watch amplitude
+  // for the true-digital-silence signature that the headset produces on its in-call tap.
+  const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
   const statusRef = useRef<PipelineStatus>("idle");
   const sessionRef = useRef<Session | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scoActiveRef = useRef(false);
+  // Refs let the once-registered SCO listener call the latest callbacks.
+  const cancelAllRef = useRef<() => void>(() => {});
+  const speakErrorRef = useRef<(message: string, cause?: unknown) => void>(() => {});
+  const stopRef = useRef<() => void>(() => {});
 
   function updateStatus(s: PipelineStatus) {
     statusRef.current = s;
     setDisplayStatus(s);
   }
+
+  const refreshMicSource = useCallback(() => {
+    setMicSource(detectMicSource());
+  }, []);
+
+  const releaseSco = useCallback(() => {
+    if (scoActiveRef.current) {
+      scoActiveRef.current = false;
+      HeadphoneButtonModule.releaseBluetoothSco();
+    }
+  }, []);
 
   function updateSession(s: Session) {
     sessionRef.current = s;
@@ -61,6 +127,12 @@ export function usePipeline() {
         playsInSilentMode: true,
         shouldPlayInBackground: true,
       });
+      await requestInitialPermissions();
+      if (isAndroid) {
+        // Re-apply the FGS type now that RECORD_AUDIO may have just been granted.
+        HeadphoneButtonModule.refreshForegroundServiceType();
+        refreshMicSource();
+      }
       await initBeeps().catch(() => {});
       const active = await getOrCreateActiveSession();
       updateSession(active);
@@ -68,7 +140,73 @@ export function usePipeline() {
       setKeysPresent(keys);
     }
     init();
-  }, []);
+  }, [refreshMicSource]);
+
+  // Keep the mic-source badge live: refresh on BT device connect/disconnect so the badge
+  // updates without needing to start a recording or refocus the screen.
+  useEffect(() => {
+    if (!isAndroid) return;
+    const sub = HeadphoneButtonModule.addListener("onBluetoothMicAvailabilityChanged", () => {
+      refreshMicSource();
+    });
+    return () => sub.remove();
+  }, [refreshMicSource]);
+
+  // Bonus stop path for headsets that surface their hang-up gesture as an SCO drop. The Jabra
+  // doesn't — its tap mutes locally, which the metering detector below catches. On a real
+  // headset disconnect, abort the in-flight turn (the capture or its reply was for a now-gone
+  // headset; processing or replying to a half-finished utterance isn't useful).
+  useEffect(() => {
+    if (!isAndroid) return;
+    const sub = HeadphoneButtonModule.addListener("onBluetoothScoChanged", (event) => {
+      const s = statusRef.current;
+      if (event.state === "stop") {
+        if (s === "recording") stopRef.current();
+        return;
+      }
+      if (s === "idle") return;
+      cancelAllRef.current();
+      updateStatus("idle");
+      refreshMicSource();
+      speakErrorRef.current("Bluetooth disconnected.");
+    });
+    return () => sub.remove();
+  }, [refreshMicSource]);
+
+  // BT-mode deliberate-mute stop detector. In BT mode the headset button is owned by call mode
+  // and never reaches our MediaSession, but headsets like the Jabra mute the SCO uplink on the
+  // in-call tap, dropping the captured stream to true digital silence (metering === -160). A live
+  // mic floors at ~-70 even during natural pauses, so SILENCE_THRESHOLD_DBFS = -150 cleanly
+  // separates "deliberate mute" from "thinking pause". Armed only after live audio has been seen,
+  // so the brief -160 at recording start doesn't trigger.
+  useEffect(() => {
+    if (displayStatus !== "recording") return;
+    if (!scoActiveRef.current) return; // phone-mic mode: taps reach us via MediaSession
+    let armed = false;
+    let silenceMs = 0;
+    let triggered = false;
+    const id = setInterval(() => {
+      if (triggered) return;
+      let m: number | undefined;
+      try {
+        m = recorder.getStatus().metering;
+      } catch {
+        return;
+      }
+      if (m == null) return;
+      if (m > SILENCE_THRESHOLD_DBFS) {
+        armed = true;
+        silenceMs = 0;
+      } else if (armed) {
+        silenceMs += METERING_POLL_MS;
+        if (silenceMs >= SILENCE_HOLD_MS) {
+          triggered = true;
+          stopRef.current();
+        }
+      }
+    }, METERING_POLL_MS);
+    return () => clearInterval(id);
+  }, [displayStatus, recorder]);
 
   const resetIdleTimer = useCallback(() => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
@@ -90,31 +228,98 @@ export function usePipeline() {
     Speech.stop();
     abortRef.current?.abort();
     abortRef.current = null;
-    if (statusRef.current === "recording") {
+    if (statusRef.current === "recording" || statusRef.current === "connecting") {
       recorder.stop().catch(() => {});
     }
-  }, [recorder]);
+    releaseSco();
+  }, [recorder, releaseSco]);
+
+  cancelAllRef.current = cancelAll;
+  speakErrorRef.current = speakError;
 
   const startRecording = useCallback(async () => {
     setErrorMessage(null);
     try {
+      const btUid = isAndroid
+        ? (HeadphoneButtonModule.getInputState()?.bluetoothUid ?? null)
+        : null;
       await recorder.prepareToRecordAsync();
+
+      if (btUid) {
+        // Gate the start cue: bring SCO up first, only beep once we can actually capture.
+        updateStatus("connecting");
+        const connected = await HeadphoneButtonModule.connectBluetoothSco(SCO_CONNECT_TIMEOUT_MS);
+        let routed = false;
+        if (connected) {
+          try {
+            recorder.setInput(btUid);
+            routed = true;
+          } catch {
+            routed = false;
+          }
+        }
+        if (routed) {
+          scoActiveRef.current = true;
+          recorder.record();
+          playStartBeep();
+          setMicSource("bluetooth");
+          updateStatus("recording");
+          return;
+        }
+        // SCO didn't connect (or routing failed): fall back to the phone mic. Speak the
+        // cue before starting the recorder so the TTS doesn't bleed into the captured audio.
+        releaseSco();
+        await new Promise<void>((resolve) => {
+          Speech.speak("Using phone microphone", {
+            language: "en",
+            onDone: () => resolve(),
+            onStopped: () => resolve(),
+            onError: () => resolve(),
+          });
+        });
+        recorder.record();
+        playStartBeep();
+        setMicSource("phone");
+        updateStatus("recording");
+        return;
+      }
+
       recorder.record();
       playStartBeep();
+      setMicSource("phone");
       updateStatus("recording");
     } catch (e) {
+      releaseSco();
+      updateStatus("idle");
       speakError("Microphone access failed. Please try again.", e);
     }
-  }, [recorder, speakError]);
+  }, [recorder, speakError, releaseSco]);
 
   const stopRecordingAndProcess = useCallback(async () => {
+    // Idempotent: the headset hang-up event and an on-screen tap can both fire.
+    if (statusRef.current !== "recording") return;
     const currentSession = sessionRef.current;
     if (!currentSession) return;
+
+    // Install the AbortController up front: a BT-disconnect listener that arrives during the
+    // early teardown phase (recorder.stop, A2DP settle) calls abortRef.current?.abort() to
+    // cancel the in-flight turn, which would no-op if the controller didn't exist yet.
+    const abort = new AbortController();
+    abortRef.current = abort;
 
     playStopBeep();
     updateStatus("processing");
     await recorder.stop();
+    if (abort.signal.aborted) return;
     const audioUri = recorder.uri;
+
+    if (scoActiveRef.current) {
+      // Tear SCO down now so playback returns to hi-fi A2DP; settle lets A2DP resume
+      // before the first TTS chunk so the reply isn't clipped or narrowband.
+      releaseSco();
+      await new Promise<void>((r) => setTimeout(r, A2DP_RESUME_SETTLE_MS));
+    }
+    if (abort.signal.aborted) return;
 
     if (!audioUri) {
       speakError("Recording failed. Please try again.");
@@ -125,8 +330,6 @@ export function usePipeline() {
     playThinkingTone();
     Speech.speak("Thinking", { language: "en" });
 
-    const abort = new AbortController();
-    abortRef.current = abort;
     // Hoisted so the catch can tear down the AudioTrack on any pipeline error —
     // otherwise an LlmError mid-response leaves buffered PCM playing while the
     // spoken error message overlaps on top of it.
@@ -240,7 +443,9 @@ export function usePipeline() {
         updateStatus("idle");
       }
     }
-  }, [recorder, speakError, resetIdleTimer]);
+  }, [recorder, speakError, resetIdleTimer, releaseSco]);
+
+  stopRef.current = stopRecordingAndProcess;
 
   const handleSinglePress = useCallback(async () => {
     if (!keysPresent) {
@@ -248,6 +453,10 @@ export function usePipeline() {
       return;
     }
     const current = statusRef.current;
+    if (current === "connecting") {
+      // Bringing up the Bluetooth link; ignore presses until it resolves.
+      return;
+    }
     if (current === "idle") {
       await startRecording();
     } else if (current === "recording") {
@@ -261,15 +470,21 @@ export function usePipeline() {
   }, [keysPresent, startRecording, stopRecordingAndProcess, cancelAll, speakError]);
 
   const handleDoublePress = useCallback(async () => {
-    if (statusRef.current !== "idle") {
-      cancelAll();
-      updateStatus("idle");
-    } else {
+    const current = statusRef.current;
+    if (current === "connecting") return;
+    if (current === "recording") {
+      // Talk-phase rule: any tap = stop. No mid-talk cancel.
+      await stopRecordingAndProcess();
+    } else if (current === "idle") {
       const fresh = await createSession();
       updateSession(fresh);
       await startRecording();
+    } else {
+      // Reply phases (processing/thinking/searching/speaking): cancel.
+      cancelAll();
+      updateStatus("idle");
     }
-  }, [cancelAll, startRecording]);
+  }, [cancelAll, startRecording, stopRecordingAndProcess]);
 
   const startNewSession = useCallback(async () => {
     cancelAll();
@@ -294,10 +509,12 @@ export function usePipeline() {
     session,
     keysPresent,
     errorMessage,
+    micSource,
     handleSinglePress,
     handleDoublePress,
     cancelPipeline,
     startNewSession,
     refreshApiKeyStatus,
+    refreshMicSource,
   };
 }

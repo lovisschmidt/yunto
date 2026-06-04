@@ -1,5 +1,5 @@
 import { NativeModule, requireNativeModule } from "expo";
-import type { HeadphoneButtonModuleEvents } from "./HeadphoneButton.types";
+import type { HeadphoneButtonModuleEvents, InputState } from "./HeadphoneButton.types";
 
 declare class HeadphoneButtonModule extends NativeModule<HeadphoneButtonModuleEvents> {
   startListening(): Promise<void>;
@@ -8,6 +8,10 @@ declare class HeadphoneButtonModule extends NativeModule<HeadphoneButtonModuleEv
   feedPcm(base64: string): void;
   endPcmStream(): void;
   stopPcmStream(): void;
+  refreshForegroundServiceType(): void;
+  getInputState(): InputState | null;
+  connectBluetoothSco(timeoutMs: number): Promise<boolean>;
+  releaseBluetoothSco(): void;
 }
 
 export default requireNativeModule<HeadphoneButtonModule>("HeadphoneButton");
